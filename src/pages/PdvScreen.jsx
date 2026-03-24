@@ -19,6 +19,8 @@ import {
   Typography,
   Empty,
   Alert,
+  Tooltip,
+  Grid,
 } from 'antd'
 import {
   BarcodeOutlined,
@@ -32,6 +34,11 @@ import {
   CarOutlined,
   LogoutOutlined,
   CloseOutlined,
+  DollarOutlined,
+  UserOutlined,
+  ShoppingCartOutlined,
+  ClockCircleOutlined,
+  SlidersOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuth } from '../contexts/AuthContext'
@@ -49,8 +56,19 @@ function formatPrice(value) {
 export default function PdvScreen() {
   const { user, logout } = useAuth()
   const pdv = useSalesPDV()
+  const screens = Grid.useBreakpoint()
   const searchInputRef = pdv.searchInputRef
   const [now, setNow] = useState(dayjs())
+  const [productHighlight, setProductHighlight] = useState(0)
+  const cartTableScrollY = screens.xxl ? 680 : screens.xl ? 620 : screens.lg ? 560 : 360
+
+  const searchDropdownOpen = Boolean(
+    pdv.productSearch?.trim() && (pdv.productResults.length > 0 || pdv.loadingProducts),
+  )
+
+  useEffect(() => {
+    setProductHighlight(0)
+  }, [pdv.productResults])
 
   useEffect(() => {
     searchInputRef.current?.focus?.()
@@ -107,6 +125,46 @@ export default function PdvScreen() {
 
   const currentRegisterName = pdv.registers.find((r) => r.id === pdv.selectedRegisterId)?.name
 
+  const pickProductAndFocus = useCallback(
+    (p) => {
+      if (!p) return
+      pdv.addToCart(p)
+      pdv.setProductSearch('')
+      pdv.setProductResults([])
+      searchInputRef.current?.focus?.()
+    },
+    [pdv, searchInputRef],
+  )
+
+  const handleSearchKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'Escape' && pdv.productSearch) {
+        e.preventDefault()
+        pdv.setProductSearch('')
+        pdv.setProductResults([])
+        return
+      }
+      if (!searchDropdownOpen || pdv.loadingProducts) return
+      const { productResults } = pdv
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setProductHighlight((i) => Math.min(i + 1, Math.max(0, productResults.length - 1)))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setProductHighlight((i) => Math.max(0, i - 1))
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        pdv.setProductSearch('')
+        pdv.setProductResults([])
+      } else if (e.key === 'Enter' && productResults.length > 0) {
+        e.preventDefault()
+        const p = productResults[productHighlight] ?? productResults[0]
+        pickProductAndFocus(p)
+      }
+    },
+    [searchDropdownOpen, pdv, productHighlight, pickProductAndFocus],
+  )
+
   if (!pdv.selectedRegisterId) {
     return (
       <div className="pdv-page pdv-login-page">
@@ -116,9 +174,9 @@ export default function PdvScreen() {
               <img src={pdv.tenantLogo} alt="Logo" className="pdv-login-logo" />
             </div>
           ) : (
-            <Title level={3} style={{ marginBottom: 24, color: '#34495e' }}>PDV</Title>
+            <Title level={3} className="pdv-login-brand-title">PDV</Title>
           )}
-          <Title level={5} style={{ marginBottom: 8, color: '#667085', fontWeight: 500 }}>Acessar caixa</Title>
+          <Title level={5} className="pdv-login-subtitle">Acessar caixa</Title>
           <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
             Selecione o caixa e digite a senha para operar.
           </Text>
@@ -181,12 +239,8 @@ export default function PdvScreen() {
               </Form.Item>
             </Form>
           )}
-          <Button
-            icon={<LogoutOutlined />}
-            onClick={logout}
-            style={{ marginTop: 8 }}
-          >
-            Deslogar
+          <Button type="default" icon={<LogoutOutlined />} onClick={logout} className="pdv-login-logout" block>
+            Sair da conta
           </Button>
         </div>
       </div>
@@ -196,86 +250,118 @@ export default function PdvScreen() {
   return (
     <div className="pdv-page">
       <div className="pdv-main">
-        <div className="pdv-header">
-          <div className="pdv-header-left">
-            {pdv.tenantLogo ? (
-              <div className="pdv-logo-wrap">
-                <img src={pdv.tenantLogo} alt="Logo" className="pdv-logo" />
-              </div>
-            ) : (
-              <Title level={4} style={{ margin: 0, color: '#34495e' }}>PDV</Title>
-            )}
-            {pdv.isRoot && (
-              <Select
-                placeholder="Empresa"
-                options={pdv.tenants.map((t) => ({ value: t.id, label: t.name }))}
-                value={pdv.selectedTenantId}
-                onChange={pdv.setSelectedTenantId}
-                style={{ minWidth: 180 }}
-              />
-            )}
-            <Text strong style={{ marginLeft: pdv.isRoot ? 12 : 0 }}>{currentRegisterName || 'Caixa'}</Text>
+        <header className="pdv-header">
+          <div className="pdv-header-bar">
+            <div className="pdv-header-left">
+              {pdv.tenantLogo ? (
+                <div className="pdv-logo-wrap">
+                  <img src={pdv.tenantLogo} alt="" className="pdv-logo" />
+                </div>
+              ) : (
+                <Title level={4} className="pdv-brand-title">PDV</Title>
+              )}
+              {pdv.isRoot && (
+                <Select
+                  placeholder="Empresa"
+                  options={pdv.tenants.map((t) => ({ value: t.id, label: t.name }))}
+                  value={pdv.selectedTenantId}
+                  onChange={pdv.setSelectedTenantId}
+                  className="pdv-header-tenant-select"
+                  aria-label="Empresa"
+                />
+              )}
+              <span className="pdv-register-pill">{currentRegisterName || 'Caixa'}</span>
+            </div>
+            <div className="pdv-header-right">
+              <Button
+                size="small"
+                icon={<LogoutOutlined />}
+                onClick={pdv.endSessionAndClear}
+                loading={pdv.loadingEndSession}
+                className="pdv-btn-end-session"
+              >
+                <span className="pdv-btn-end-session-text">Encerrar sessão</span>
+              </Button>
+              <span className="pdv-header-user" title={user?.fullName || user?.name || 'Atendente'}>
+                {user?.fullName || user?.name || 'Atendente'}
+              </span>
+            </div>
           </div>
-          <div className="pdv-header-right">
-            <Button
-              size="small"
-              icon={<LogoutOutlined />}
-              onClick={pdv.endSessionAndClear}
-              loading={pdv.loadingEndSession}
-              className="pdv-btn-end-session"
-              style={{ marginRight: 8 }}
-            >
-              <span className="pdv-btn-end-session-text">Encerrar sessão</span>
-            </Button>
-            <Text type="secondary">{user?.fullName || user?.name || 'Atendente'}</Text>
-            <Text type="secondary" style={{ marginLeft: 16 }}>{now.format('DD/MM/YYYY HH:mm:ss')}</Text>
+          <div className="pdv-header-meta">
+            <time className="pdv-header-clock" dateTime={now.toISOString()}>
+              <ClockCircleOutlined aria-hidden className="pdv-header-clock-icon" />
+              {now.format('DD/MM/YYYY · HH:mm:ss')}
+            </time>
           </div>
+        </header>
+
+        <div className="pdv-mobile-hints" aria-label="Atalhos rápidos">
+          <span><kbd>F9</kbd> finalizar</span>
+          <span><kbd>F5</kbd>–<kbd>F8</kbd> pagamento</span>
+          <span><kbd>↑</kbd><kbd>↓</kbd> lista</span>
         </div>
 
-        <Row gutter={[0, 12]} align="top" className="pdv-main-row">
-          <Col xs={24} md={24} lg={10} xl={8} className="pdv-col-left">
+        <Row gutter={[16, 16]} align="top" className="pdv-main-row">
+          <Col xs={{ span: 24, order: 2 }} lg={{ span: 10, xl: 8, order: 1 }} className="pdv-col-left pdv-col-checkout-flow">
             <div className="pdv-search-wrap">
+              <label className="pdv-search-label" htmlFor="pdv-product-search">
+                Adicionar produto
+              </label>
               <Input
+                id="pdv-product-search"
                 ref={searchInputRef}
-                placeholder="Código de barras ou nome do produto"
-                prefix={<BarcodeOutlined />}
+                placeholder="Código de barras, nome… (Enter adiciona o destacado)"
+                prefix={<BarcodeOutlined className="pdv-search-prefix-icon" aria-hidden />}
+                suffix={pdv.loadingProducts ? <Spin size="small" /> : null}
                 value={pdv.productSearch}
                 onChange={(e) => pdv.setProductSearch(e.target.value)}
-                onPressEnter={() => {
-                  if (pdv.productResults.length > 0 && pdv.productResults[0]) {
-                    pdv.addToCart(pdv.productResults[0])
-                    pdv.setProductSearch('')
-                    pdv.setProductResults([])
-                  }
-                }}
+                onKeyDown={handleSearchKeyDown}
                 allowClear
                 size="large"
                 autoComplete="off"
+                aria-autocomplete="list"
+                aria-expanded={searchDropdownOpen}
+                aria-controls={searchDropdownOpen ? 'pdv-product-listbox' : undefined}
+                aria-activedescendant={
+                  searchDropdownOpen && pdv.productResults[productHighlight]
+                    ? `pdv-product-option-${productHighlight}`
+                    : undefined
+                }
               />
               {pdv.productSearch?.trim() && (pdv.productResults.length > 0 || pdv.loadingProducts) && (
-                <div className="pdv-product-dropdown">
+                <div
+                  id="pdv-product-listbox"
+                  className="pdv-product-dropdown"
+                  role="listbox"
+                  aria-label="Resultados da busca"
+                >
                   {pdv.loadingProducts ? (
-                    <div className="pdv-dropdown-loading"><Spin size="small" /> Buscando...</div>
+                    <div className="pdv-dropdown-loading"><Spin size="small" /> Buscando…</div>
                   ) : (
                     <div className="pdv-dropdown-list">
-                      {pdv.productResults.map((p) => {
+                      {pdv.productResults.map((p, idx) => {
                         const price = p.discountPrice ?? p.unitPrice ?? 0
+                        const active = idx === productHighlight
                         return (
                           <div
                             key={p.id}
-                            className="pdv-dropdown-item"
-                            onClick={() => {
-                              pdv.addToCart(p)
-                              pdv.setProductSearch('')
-                              pdv.setProductResults([])
-                              searchInputRef.current?.focus?.()
+                            id={`pdv-product-option-${idx}`}
+                            role="option"
+                            aria-selected={active}
+                            className={`pdv-dropdown-item${active ? ' pdv-dropdown-item--active' : ''}`}
+                            onMouseEnter={() => setProductHighlight(idx)}
+                            onClick={() => pickProductAndFocus(p)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                pickProductAndFocus(p)
+                              }
                             }}
-                            role="button"
-                            tabIndex={0}
+                            tabIndex={-1}
                           >
                             <span className="pdv-dropdown-name">{p.name}</span>
                             <span className="pdv-dropdown-price">{formatPrice(price)}</span>
-                            <PlusOutlined />
+                            <PlusOutlined className="pdv-dropdown-plus" aria-hidden />
                           </div>
                         )
                       })}
@@ -285,7 +371,44 @@ export default function PdvScreen() {
               )}
             </div>
 
-            <Card title="Pagamento" size="small" className="pdv-card pdv-payment-card" style={{ marginTop: 4 }}>
+            <section className="pdv-customer-strip" aria-label="Cliente da venda">
+              <div className="pdv-customer-strip-inner">
+                <div className="pdv-customer-strip-avatar" aria-hidden>
+                  <UserOutlined />
+                </div>
+                <div className="pdv-customer-strip-info">
+                  <span className="pdv-customer-strip-kicker">Cliente nesta venda</span>
+                  <button
+                    type="button"
+                    className="pdv-customer-strip-name-btn"
+                    onClick={pdv.openCustomerModal}
+                  >
+                    {pdv.customerName?.trim() ? pdv.customerName : 'Consumidor — toque para buscar ou cadastrar'}
+                  </button>
+                </div>
+                <Tooltip title="Atalho F11">
+                  <Button
+                    type="primary"
+                    icon={<UserAddOutlined />}
+                    onClick={pdv.openCustomerModal}
+                    className="pdv-customer-strip-action"
+                  >
+                    <span className="pdv-customer-strip-action-label">Cliente</span>
+                    <kbd className="pdv-kbd-inline">F11</kbd>
+                  </Button>
+                </Tooltip>
+              </div>
+            </section>
+
+            <Card
+              title={(
+                <span className="pdv-card-head-title">
+                  <DollarOutlined aria-hidden /> Pagamento
+                </span>
+              )}
+              size="small"
+              className="pdv-card pdv-payment-card pdv-card-elevated"
+            >
               <Form layout="vertical" size="small">
                 <Form.Item label="Status da venda">
                   <Select
@@ -469,90 +592,196 @@ export default function PdvScreen() {
 
               </Card>
 
-            <Card title="Cliente e desconto" size="small" className="pdv-card" style={{ marginTop: 16 }}>
-              <Form layout="vertical" size="small">
-                <Form.Item label="Tipo de venda">
-                  <Select value={pdv.saleType} onChange={pdv.setSaleType} options={SALE_TYPE_OPTIONS} style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item label="Cliente">
-                  <Space.Compact block className="pdv-cliente-compact">
-                    <Input
-                      readOnly
-                      value={pdv.customerName || ''}
-                      placeholder="Nenhum cliente"
-                      onClick={pdv.openCustomerModal}
-                      style={{ cursor: 'pointer', backgroundColor: '#f5f5f5' }}
-                    />
-                    <Button type="primary" icon={<UserAddOutlined />} onClick={pdv.openCustomerModal}>
-                      Adicionar
-                    </Button>
-                  </Space.Compact>
-                </Form.Item>
-                <Form.Item label="CPF/CNPJ do cliente" extra="Opcional. Necessário para NF-e.">
-                  <Input
-                    value={pdv.customerDocument || ''}
-                    onChange={(e) => pdv.setCustomerDocument(e.target.value)}
-                    placeholder="CPF ou CNPJ"
-                    maxLength={18}
-                  />
-                </Form.Item>
-                <Form.Item>
-                  <Checkbox checked={pdv.includeCpfOnNote} onChange={(e) => pdv.setIncludeCpfOnNote(e.target.checked)}>Incluir CPF/CNPJ na nota</Checkbox>
-                </Form.Item>
-                <Form.Item label="Desconto">
-                  <Radio.Group value={pdv.discountType} onChange={(e) => { pdv.setDiscountType(e.target.value); if (e.target.value === 'amount') pdv.setDiscountPercent(0); else pdv.setDiscountAmount(0) }}>
-                    <Radio value="amount">R$</Radio>
-                    <Radio value="percent">%</Radio>
-                  </Radio.Group>
-                  {pdv.discountType === 'amount' ? (
-                    <InputNumber min={0} value={pdv.discountAmount} onChange={(v) => { pdv.setDiscountAmount(v ?? 0); pdv.setDiscountPercent(0) }} style={{ width: '100%', marginTop: 8 }} prefix="R$" />
-                  ) : (
-                    <InputNumber min={0} max={100} value={pdv.discountPercent} onChange={(v) => { pdv.setDiscountPercent(v ?? 0); pdv.setDiscountAmount(0) }} style={{ width: '100%', marginTop: 8 }} addonAfter="%" />
-                  )}
-                </Form.Item>
-                <Form.Item label="Taxa de entrega">
-                  <InputNumber min={0} value={pdv.deliveryFee} onChange={(v) => pdv.setDeliveryFee(v ?? 0)} style={{ width: '100%' }} prefix="R$" />
-                </Form.Item>
-                {pdv.saleType === 'DELIVERY' && (
-                  <Collapse
-                    size="small"
-                    items={[{
-                      key: 'delivery',
-                      label: 'Dados da entrega',
-                      children: (
-                        <Form layout="vertical" size="small">
-                          <Form.Item label="Endereço"><Input value={pdv.deliveryAddress} onChange={(e) => pdv.setDeliveryAddress(e.target.value)} placeholder="Rua, número" /></Form.Item>
-                          <Form.Item label="Complemento"><Input value={pdv.deliveryComplement} onChange={(e) => pdv.setDeliveryComplement(e.target.value)} placeholder="Apto" /></Form.Item>
-                          <Row gutter={8}>
-                            <Col span={8}><Form.Item label="CEP"><Input value={pdv.deliveryZipCode} onChange={(e) => pdv.setDeliveryZipCode(e.target.value)} placeholder="CEP" /></Form.Item></Col>
-                            <Col span={16}><Form.Item label="Bairro"><Input value={pdv.deliveryNeighborhood} onChange={(e) => pdv.setDeliveryNeighborhood(e.target.value)} placeholder="Bairro" /></Form.Item></Col>
-                          </Row>
-                          <Row gutter={8}>
-                            <Col span={18}><Form.Item label="Cidade"><Input value={pdv.deliveryCity} onChange={(e) => pdv.setDeliveryCity(e.target.value)} placeholder="Cidade" /></Form.Item></Col>
-                            <Col span={6}><Form.Item label="UF"><Input value={pdv.deliveryState} onChange={(e) => pdv.setDeliveryState(e.target.value)} placeholder="UF" maxLength={2} /></Form.Item></Col>
-                          </Row>
-                          <Form.Item label="Instruções"><Input.TextArea value={pdv.deliveryInstructions} onChange={(e) => pdv.setDeliveryInstructions(e.target.value)} placeholder="Opcional" rows={2} /></Form.Item>
-                          <Form.Item><Checkbox checked={pdv.createDeliveryWithSale} onChange={(e) => pdv.setCreateDeliveryWithSale(e.target.checked)}>Criar entrega automaticamente</Checkbox></Form.Item>
-                        </Form>
-                      ),
-                    }]}
-                  />
-                )}
-              </Form>
-            </Card>
+            <Collapse
+              bordered={false}
+              className="pdv-adjustments-collapse"
+              expandIconPosition="end"
+              items={[
+                {
+                  key: 'adjustments',
+                  label: (
+                    <span className="pdv-adjustments-collapse-label">
+                      <SlidersOutlined aria-hidden />
+                      Tipo de venda, desconto, entrega e NF-e
+                    </span>
+                  ),
+                  children: (
+                    <Form layout="vertical" size="small" className="pdv-adjustments-form">
+                      <Form.Item label="Tipo de venda">
+                        <Select value={pdv.saleType} onChange={pdv.setSaleType} options={SALE_TYPE_OPTIONS} style={{ width: '100%' }} />
+                      </Form.Item>
+                      <Form.Item
+                        label="CPF/CNPJ na nota"
+                        extra="Opcional. Obrigatório para algumas NF-e."
+                      >
+                        <Input
+                          value={pdv.customerDocument || ''}
+                          onChange={(e) => pdv.setCustomerDocument(e.target.value)}
+                          placeholder="Somente números ou formatado"
+                          maxLength={18}
+                          allowClear
+                        />
+                      </Form.Item>
+                      <Form.Item>
+                        <Checkbox checked={pdv.includeCpfOnNote} onChange={(e) => pdv.setIncludeCpfOnNote(e.target.checked)}>
+                          Incluir CPF/CNPJ na nota fiscal
+                        </Checkbox>
+                      </Form.Item>
+                      <Form.Item label="Desconto na venda">
+                        <Radio.Group
+                          value={pdv.discountType}
+                          onChange={(e) => {
+                            pdv.setDiscountType(e.target.value)
+                            if (e.target.value === 'amount') pdv.setDiscountPercent(0)
+                            else pdv.setDiscountAmount(0)
+                          }}
+                        >
+                          <Radio value="amount">Valor R$</Radio>
+                          <Radio value="percent">Percentual</Radio>
+                        </Radio.Group>
+                        {pdv.discountType === 'amount' ? (
+                          <InputNumber
+                            min={0}
+                            value={pdv.discountAmount}
+                            onChange={(v) => {
+                              pdv.setDiscountAmount(v ?? 0)
+                              pdv.setDiscountPercent(0)
+                            }}
+                            style={{ width: '100%', marginTop: 8 }}
+                            prefix="R$"
+                          />
+                        ) : (
+                          <InputNumber
+                            min={0}
+                            max={100}
+                            value={pdv.discountPercent}
+                            onChange={(v) => {
+                              pdv.setDiscountPercent(v ?? 0)
+                              pdv.setDiscountAmount(0)
+                            }}
+                            style={{ width: '100%', marginTop: 8 }}
+                            addonAfter="%"
+                          />
+                        )}
+                      </Form.Item>
+                      <Form.Item label="Taxa de entrega">
+                        <InputNumber
+                          min={0}
+                          value={pdv.deliveryFee}
+                          onChange={(v) => pdv.setDeliveryFee(v ?? 0)}
+                          style={{ width: '100%' }}
+                          prefix="R$"
+                        />
+                      </Form.Item>
+                      {pdv.saleType === 'DELIVERY' && (
+                        <Collapse
+                          size="small"
+                          className="pdv-delivery-nested"
+                          items={[
+                            {
+                              key: 'delivery',
+                              label: 'Endereço e dados da entrega',
+                              children: (
+                                <Form layout="vertical" size="small">
+                                  <Form.Item label="Endereço">
+                                    <Input value={pdv.deliveryAddress} onChange={(e) => pdv.setDeliveryAddress(e.target.value)} placeholder="Rua, número" />
+                                  </Form.Item>
+                                  <Form.Item label="Complemento">
+                                    <Input value={pdv.deliveryComplement} onChange={(e) => pdv.setDeliveryComplement(e.target.value)} placeholder="Apto, bloco…" />
+                                  </Form.Item>
+                                  <Row gutter={8}>
+                                    <Col span={8}>
+                                      <Form.Item label="CEP">
+                                        <Input value={pdv.deliveryZipCode} onChange={(e) => pdv.setDeliveryZipCode(e.target.value)} placeholder="CEP" />
+                                      </Form.Item>
+                                    </Col>
+                                    <Col span={16}>
+                                      <Form.Item label="Bairro">
+                                        <Input value={pdv.deliveryNeighborhood} onChange={(e) => pdv.setDeliveryNeighborhood(e.target.value)} placeholder="Bairro" />
+                                      </Form.Item>
+                                    </Col>
+                                  </Row>
+                                  <Row gutter={8}>
+                                    <Col span={18}>
+                                      <Form.Item label="Cidade">
+                                        <Input value={pdv.deliveryCity} onChange={(e) => pdv.setDeliveryCity(e.target.value)} placeholder="Cidade" />
+                                      </Form.Item>
+                                    </Col>
+                                    <Col span={6}>
+                                      <Form.Item label="UF">
+                                        <Input value={pdv.deliveryState} onChange={(e) => pdv.setDeliveryState(e.target.value)} placeholder="UF" maxLength={2} />
+                                      </Form.Item>
+                                    </Col>
+                                  </Row>
+                                  <Form.Item label="Instruções para entrega">
+                                    <Input.TextArea value={pdv.deliveryInstructions} onChange={(e) => pdv.setDeliveryInstructions(e.target.value)} placeholder="Opcional" rows={2} />
+                                  </Form.Item>
+                                  <Form.Item>
+                                    <Checkbox checked={pdv.createDeliveryWithSale} onChange={(e) => pdv.setCreateDeliveryWithSale(e.target.checked)}>
+                                      Criar entrega automaticamente após a venda
+                                    </Checkbox>
+                                  </Form.Item>
+                                </Form>
+                              ),
+                            },
+                          ]}
+                        />
+                      )}
+                    </Form>
+                  ),
+                },
+              ]}
+            />
 
-            <Card size="small" className="pdv-card" style={{ marginTop: 16 }}>
-              <div style={{ marginBottom: 8, color: '#667085', fontSize: 13 }}>Observações</div>
-              <Input.TextArea value={pdv.notes} onChange={(e) => pdv.setNotes(e.target.value)} placeholder="Opcional" rows={2} />
+            <Card
+              size="small"
+              className="pdv-card pdv-card-elevated pdv-notes-card"
+              style={{ marginTop: 0 }}
+              title={(
+                <span className="pdv-card-head-title pdv-card-head-title--muted">Observações da venda</span>
+              )}
+            >
+              <Input.TextArea
+                value={pdv.notes}
+                onChange={(e) => pdv.setNotes(e.target.value)}
+                placeholder="Instruções para a cozinha, observações fiscais…"
+                rows={2}
+                showCount
+                maxLength={500}
+              />
             </Card>
           </Col>
 
-          <Col xs={24} md={24} lg={14} xl={16} className="pdv-produtos-col pdv-col-right">
-            <Card title="Produtos" size="small" className="pdv-card pdv-cart-card">
+          <Col xs={{ span: 24, order: 1 }} lg={{ span: 14, xl: 16, order: 2 }} className="pdv-produtos-col pdv-col-right pdv-col-cart-sticky">
+            <Card
+              title={(
+                <span className="pdv-card-head-title">
+                  <ShoppingCartOutlined aria-hidden /> Carrinho
+                  {pdv.cart.length > 0 && (
+                    <span className="pdv-cart-count">{pdv.cart.length}</span>
+                  )}
+                </span>
+              )}
+              size="small"
+              className="pdv-card pdv-cart-card pdv-card-elevated"
+            >
               {pdv.cart.length === 0 ? (
-                <Empty description="Carrinho vazio. Digite o código ou nome do produto para adicionar." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  styles={{ image: { height: 56 } }}
+                  description={(
+                    <div className="pdv-empty-cart">
+                      <div className="pdv-empty-cart-title">Nenhum item ainda</div>
+                      <p className="pdv-empty-cart-hint">
+                        Busque acima; defina o cliente na faixa logo abaixo quando precisar.
+                      </p>
+                    </div>
+                  )}
+                />
               ) : (
                 <Table
+                  sticky
+                  scroll={{ y: cartTableScrollY, x: 'max-content' }}
                   dataSource={pdv.cart.map((c) => ({ ...c, key: c.productId }))}
                   columns={[
                     { title: '#', width: 36, align: 'center', render: (_, __, i) => i + 1 },
@@ -580,12 +809,20 @@ export default function PdvScreen() {
               )}
               {pdv.cart.length > 0 && (
                 <div className="pdv-cart-footer">
-                  <Button type="link" onClick={pdv.openCustomerModal}>Cliente</Button>
-                  <Button type="link" danger onClick={() => pdv.cart.length > 0 && pdv.removeFromCart(pdv.cart[pdv.cart.length - 1].productId)}>Cancelar último (F10)</Button>
+                  <Button type="link" danger onClick={() => pdv.cart.length > 0 && pdv.removeFromCart(pdv.cart[pdv.cart.length - 1].productId)}>
+                    Desfazer último item <kbd className="pdv-kbd-inline">F10</kbd>
+                  </Button>
                 </div>
               )}
             </Card>
-            <Card size="small" className="pdv-card pdv-shortcuts-card pdv-shortcuts-desktop" style={{ marginTop: 16 }} title="Atalhos de teclado">
+            <Card
+              size="small"
+              className="pdv-card pdv-shortcuts-card pdv-shortcuts-desktop pdv-card-elevated"
+              style={{ marginTop: 16 }}
+              title={(
+                <span className="pdv-card-head-title pdv-card-head-title--muted">Atalhos de teclado</span>
+              )}
+            >
               <div className="pdv-shortcuts-grid">
                 <span className="pdv-shortcut-key">F5</span>
                 <span className="pdv-shortcut-desc">PIX</span>
@@ -608,7 +845,8 @@ export default function PdvScreen() {
 
         <div className="pdv-bottom-bar">
           <span className="pdv-bottom-bar-total">
-            Total: {formatPrice(pdv.totalAPagar ?? pdv.total)}
+            <span className="pdv-bottom-bar-label">Total</span>
+            {formatPrice(pdv.totalAPagar ?? pdv.total)}
           </span>
           <Button
             type="primary"
@@ -617,14 +855,19 @@ export default function PdvScreen() {
             onClick={() => pdv.cart.length > 0 && !pdv.submitting && pdv.handleFinish()}
             loading={pdv.submitting}
             disabled={pdv.cart.length === 0}
+            aria-label={pdv.saleStatus === 'OPEN' ? 'Registrar venda pendente' : 'Finalizar venda (atalho F9)'}
           >
-            {pdv.saleStatus === 'OPEN' ? 'Registrar pendente' : 'Finalizar venda'}
+            {pdv.saleStatus === 'OPEN' ? 'Pendente' : 'Finalizar'}
           </Button>
         </div>
       </div>
 
       <Modal
-        title="Cliente"
+        title={(
+          <span className="pdv-modal-title">
+            <UserOutlined aria-hidden /> Cliente
+          </span>
+        )}
         open={pdv.customerModalOpen}
         onCancel={pdv.closeCustomerModal}
         footer={null}
@@ -669,6 +912,7 @@ export default function PdvScreen() {
         width={420}
         centered
         closable={false}
+        zIndex={2100}
         className="pdv-success-modal pdv-modal-success"
         styles={{ body: { padding: 0 } }}
       >
