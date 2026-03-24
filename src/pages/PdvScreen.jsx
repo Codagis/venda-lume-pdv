@@ -19,7 +19,6 @@ import {
   Typography,
   Empty,
   Alert,
-  message,
 } from 'antd'
 import {
   BarcodeOutlined,
