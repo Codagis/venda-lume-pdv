@@ -93,7 +93,7 @@ export function useSalesPDV() {
     } catch (e) {
       message.error(e?.message || 'Erro ao carregar empresas.')
     }
-  }, [isRoot])
+  }, [isRoot, selectedTenantId])
 
   const searchProduct = useCallback(async () => {
     const q = productSearch?.trim()
@@ -165,7 +165,7 @@ export function useSalesPDV() {
     setShowPdvPasswordInput(true)
     setSelectedRegisterId(null)
     return
-  }, [selectedRegisterId, effectiveTenantId, isRoot, effectiveRegistersList])
+  }, [selectedRegisterId, effectiveTenantId, isRoot])
 
   const submitPdvLogin = useCallback(async () => {
     const registerId = loginRegisterId || pendingRegisterId
@@ -191,7 +191,7 @@ export function useSalesPDV() {
     } finally {
       setLoadingStartSession(false)
     }
-  }, [loginRegisterId, pendingRegisterId, pdvPasswordValue, effectiveRegistersList, effectiveTenantId, isRoot])
+  }, [loginRegisterId, pendingRegisterId, pdvPasswordValue, effectiveTenantId, isRoot])
 
   const endSessionAndClear = useCallback(async () => {
     if (!selectedRegisterId) return
@@ -290,19 +290,19 @@ export function useSalesPDV() {
     }
   }, [customerSearch, effectiveTenantId, isRoot])
 
-  const openCustomerModal = () => {
+  const openCustomerModal = useCallback(() => {
     setCustomerModalOpen(true)
     setCustomerSearch('')
     setCustomerResults([])
     setCustomerSearched(false)
-  }
+  }, [])
 
-  const closeCustomerModal = () => {
+  const closeCustomerModal = useCallback(() => {
     setCustomerModalOpen(false)
     setCustomerSearch('')
     setCustomerResults([])
     setCustomerSearched(false)
-  }
+  }, [])
 
   const fillDeliveryFromCustomer = useCallback((customer) => {
     if (!customer) return
@@ -412,7 +412,7 @@ export function useSalesPDV() {
     if (paymentMethod === 'CREDIT_CARD' && installmentsCount > effectiveMaxInstallments) {
       setInstallmentsCount(Math.max(1, effectiveMaxInstallments))
     }
-  }, [paymentMethod, effectiveMaxInstallments])
+  }, [paymentMethod, effectiveMaxInstallments, installmentsCount])
 
   const resetForm = useCallback(() => {
     setCart([])
@@ -527,7 +527,7 @@ export function useSalesPDV() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, saleType, saleStatus, saleDiscount, discountPercent, discountAmount, deliveryFee, paymentMethod, amountReceived, totalAPagar, total, customerName, customerDocument, notes, includeCpfOnNote, selectedCustomer, deliveryAddress, deliveryComplement, deliveryZipCode, deliveryNeighborhood, deliveryCity, deliveryState, installmentsCount, selectedCardMachineId, cardBrand, cardAuthorization, cardIntegrationType, deliveryPriority, deliveryInstructions, deliveryScheduledAt, createDeliveryWithSale, effectiveTenantId, isRoot, resetForm, selectedRegisterId])
+  }, [cart, saleType, saleStatus, saleDiscount, discountPercent, deliveryFee, paymentMethod, amountReceived, totalAPagar, customerName, customerDocument, notes, selectedCustomer, deliveryAddress, deliveryComplement, deliveryZipCode, deliveryNeighborhood, deliveryCity, deliveryState, installmentsCount, selectedCardMachineId, cardBrand, cardAuthorization, deliveryPriority, deliveryInstructions, deliveryScheduledAt, createDeliveryWithSale, effectiveTenantId, isRoot, resetForm, selectedRegisterId])
 
   const handleDownloadFiscal = useCallback(async () => {
     if (!lastSale?.id) return
