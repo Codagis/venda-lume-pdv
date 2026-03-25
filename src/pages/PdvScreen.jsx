@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import {
   Input,
   Select,
@@ -21,6 +21,7 @@ import {
   Alert,
   Tooltip,
   Grid,
+  message,
 } from 'antd'
 import {
   BarcodeOutlined,
@@ -48,6 +49,8 @@ import './PdvScreen.css'
 
 const { Title, Text } = Typography
 
+const PDV_FUNCTION_KEYS = new Set(['F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11'])
+
 function formatPrice(value) {
   if (value == null) return 'R$ 0,00'
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
@@ -58,9 +61,48 @@ export default function PdvScreen() {
   const pdv = useSalesPDV()
   const screens = Grid.useBreakpoint()
   const searchInputRef = pdv.searchInputRef
+  const amountReceivedRef = useRef(null)
+  const customerSearchInputRef = useRef(null)
+  const customerItemRefs = useRef([])
   const [now, setNow] = useState(dayjs())
   const [productHighlight, setProductHighlight] = useState(0)
-  const cartTableScrollY = screens.xxl ? 680 : screens.xl ? 620 : screens.lg ? 560 : 360
+  const [cartRowIndex, setCartRowIndex] = useState(0)
+  const [adjustmentsActiveKey, setAdjustmentsActiveKey] = useState([])
+  const [viewportH, setViewportH] = useState(
+    typeof window !== 'undefined' ? window.innerHeight : 800,
+  )
+
+  useEffect(() => {
+    const update = () => setViewportH(window.visualViewport?.height ?? window.innerHeight)
+    update()
+    window.addEventListener('resize', update)
+    window.visualViewport?.addEventListener('resize', update)
+    window.visualViewport?.addEventListener('scroll', update)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.visualViewport?.removeEventListener('resize', update)
+      window.visualViewport?.removeEventListener('scroll', update)
+    }
+  }, [])
+
+  const cartTableScrollY = useMemo(() => {
+    const vh = viewportH
+    const rowCount = pdv.cart.length
+    const theadApprox = 46
+    const rowApprox = 54
+    const bodyPadding = 12
+    const contentNeeded = rowCount > 0 ? theadApprox + rowCount * rowApprox + bodyPadding : 100
+
+    let cap
+    if (screens.xxl) cap = Math.min(680, Math.max(280, Math.floor(vh * 0.5)))
+    else if (screens.xl) cap = Math.min(620, Math.max(260, Math.floor(vh * 0.46)))
+    else if (screens.lg) cap = Math.min(560, Math.max(240, Math.floor(vh * 0.42)))
+    else if (screens.md) cap = Math.min(420, Math.max(200, Math.floor(vh * 0.36)))
+    else cap = Math.min(340, Math.max(160, Math.floor(vh * 0.3)))
+
+    /* Poucos itens: altura próxima ao conteúdo; muitos: até o teto da viewport */
+    return Math.min(cap, Math.max(96, contentNeeded))
+  }, [screens.xxl, screens.xl, screens.lg, screens.md, viewportH, pdv.cart.length])
 
   const searchDropdownOpen = Boolean(
     pdv.productSearch?.trim() && (pdv.productResults.length > 0 || pdv.loadingProducts),
@@ -71,6 +113,11 @@ export default function PdvScreen() {
   }, [pdv.productResults])
 
   useEffect(() => {
+    if (pdv.cart.length === 0) setCartRowIndex(0)
+    else setCartRowIndex((i) => Math.min(Math.max(0, i), pdv.cart.length - 1))
+  }, [pdv.cart])
+
+  useEffect(() => {
     searchInputRef.current?.focus?.()
   }, [searchInputRef])
 
@@ -79,12 +126,98 @@ export default function PdvScreen() {
     return () => clearInterval(t)
   }, [])
 
+  const focusAmountReceived = useCallback(() => {
+    const el = amountReceivedRef.current
+    if (el && typeof el.focus === 'function') el.focus()
+    else {
+      const input = document.getElementById('pdv-amount-received')
+      input?.focus?.()
+    }
+  }, [])
+
   const handleKeyDown = useCallback((e) => {
+    if (pdv.successModalOpen || pdv.customerModalOpen) return
+
     const target = e.target
-    const isInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT'
-    if (isInput && !['F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11'].includes(e.key)) return
+    const tag = target?.tagName
+    const isInputLike = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+    if (isInputLike && !PDV_FUNCTION_KEYS.has(e.key)) return
+
+    const cartLen = pdv.cart.length
+    const isAltCartNav =
+      e.altKey &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      cartLen > 0 &&
+      (e.key === 'ArrowUp' ||
+        e.key === 'ArrowDown' ||
+        e.key === 'Home' ||
+        e.key === 'End' ||
+        e.key === 'Delete' ||
+        e.code === 'NumpadAdd' ||
+        e.code === 'NumpadSubtract' ||
+        e.code === 'Equal' ||
+        e.code === 'Minus')
+
+    if (isInputLike && isAltCartNav) {
+      e.preventDefault()
+      return
+    }
+
+    if (!isInputLike && isAltCartNav) {
+      e.preventDefault()
+      const lineAt = (idx) => pdv.cart[Math.min(Math.max(0, idx), cartLen - 1)]
+
+      if (e.key === 'ArrowUp') {
+        setCartRowIndex((i) => Math.max(0, i - 1))
+        return
+      }
+      if (e.key === 'ArrowDown') {
+        setCartRowIndex((i) => Math.min(cartLen - 1, i + 1))
+        return
+      }
+      if (e.key === 'Home') {
+        setCartRowIndex(0)
+        return
+      }
+      if (e.key === 'End') {
+        setCartRowIndex(cartLen - 1)
+        return
+      }
+      if (e.key === 'Delete') {
+        const line = lineAt(cartRowIndex)
+        if (line) pdv.removeFromCart(line.productId)
+        return
+      }
+      const qtyPlus = e.code === 'NumpadAdd' || e.code === 'Equal'
+      const qtyMinus = e.code === 'NumpadSubtract' || e.code === 'Minus'
+      if (qtyPlus || qtyMinus) {
+        const line = lineAt(cartRowIndex)
+        if (!line) return
+        const q = line.quantity || 1
+        if (qtyPlus) pdv.updateCartItem(line.productId, 'quantity', q + 1)
+        else pdv.updateCartItem(line.productId, 'quantity', Math.max(0.1, q - 1))
+        return
+      }
+    }
 
     switch (e.key) {
+      case 'F2':
+        e.preventDefault()
+        searchInputRef.current?.focus?.()
+        break
+      case 'F3':
+        e.preventDefault()
+        if (pdv.saleStatus === 'COMPLETED' && !['CREDIT_CARD', 'DEBIT_CARD', 'PIX'].includes(pdv.paymentMethod)) {
+          focusAmountReceived()
+        } else {
+          message.info({ content: 'Valor recebido editável em Dinheiro (F6).', duration: 2.5 })
+        }
+        break
+      case 'F4':
+        e.preventDefault()
+        setAdjustmentsActiveKey((k) => (k.length ? [] : ['adjustments']))
+        break
       case 'F5':
         e.preventDefault()
         pdv.setPaymentMethod('PIX')
@@ -116,7 +249,7 @@ export default function PdvScreen() {
       default:
         break
     }
-  }, [pdv])
+  }, [pdv, cartRowIndex, searchInputRef, focusAmountReceived])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
@@ -163,6 +296,37 @@ export default function PdvScreen() {
       }
     },
     [searchDropdownOpen, pdv, productHighlight, pickProductAndFocus],
+  )
+
+  const handleCustomerSearchKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'ArrowDown' && pdv.customerResults.length > 0) {
+        e.preventDefault()
+        requestAnimationFrame(() => customerItemRefs.current[0]?.focus?.())
+      }
+    },
+    [pdv.customerResults.length],
+  )
+
+  const handleCustomerItemKeyDown = useCallback(
+    (e, idx, customer) => {
+      const len = pdv.customerResults.length
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        pdv.selectCustomer(customer)
+        return
+      }
+      if (e.key === 'ArrowDown' && idx < len - 1) {
+        e.preventDefault()
+        customerItemRefs.current[idx + 1]?.focus?.()
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (idx > 0) customerItemRefs.current[idx - 1]?.focus?.()
+        else customerSearchInputRef.current?.focus?.()
+      }
+    },
+    [pdv],
   )
 
   if (!pdv.selectedRegisterId) {
@@ -223,6 +387,7 @@ export default function PdvScreen() {
                   onPressEnter={() => pdv.submitPdvLogin()}
                   size="large"
                   autoComplete="current-password"
+                  autoFocus={pdv.registers.length > 0}
                 />
               </Form.Item>
               <Form.Item>
@@ -249,60 +414,64 @@ export default function PdvScreen() {
 
   return (
     <div className="pdv-page">
-      <div className="pdv-main">
-        <header className="pdv-header">
-          <div className="pdv-header-bar">
-            <div className="pdv-header-left">
-              {pdv.tenantLogo ? (
-                <div className="pdv-logo-wrap">
-                  <img src={pdv.tenantLogo} alt="" className="pdv-logo" />
-                </div>
-              ) : (
-                <Title level={4} className="pdv-brand-title">PDV</Title>
-              )}
-              {pdv.isRoot && (
-                <Select
-                  placeholder="Empresa"
-                  options={pdv.tenants.map((t) => ({ value: t.id, label: t.name }))}
-                  value={pdv.selectedTenantId}
-                  onChange={pdv.setSelectedTenantId}
-                  className="pdv-header-tenant-select"
-                  aria-label="Empresa"
-                />
-              )}
-              <span className="pdv-register-pill">{currentRegisterName || 'Caixa'}</span>
-            </div>
-            <div className="pdv-header-right">
-              <Button
-                size="small"
-                icon={<LogoutOutlined />}
-                onClick={pdv.endSessionAndClear}
-                loading={pdv.loadingEndSession}
-                className="pdv-btn-end-session"
-              >
-                <span className="pdv-btn-end-session-text">Encerrar sessão</span>
-              </Button>
-              <span className="pdv-header-user" title={user?.fullName || user?.name || 'Atendente'}>
-                {user?.fullName || user?.name || 'Atendente'}
-              </span>
-            </div>
+      <header className="pdv-header pdv-header--full-width">
+        <div className="pdv-header-bar">
+          <div className="pdv-header-left">
+            {pdv.tenantLogo ? (
+              <div className="pdv-logo-wrap">
+                <img src={pdv.tenantLogo} alt="" className="pdv-logo" />
+              </div>
+            ) : (
+              <Title level={4} className="pdv-brand-title">PDV</Title>
+            )}
+            {pdv.isRoot && (
+              <Select
+                placeholder="Empresa"
+                options={pdv.tenants.map((t) => ({ value: t.id, label: t.name }))}
+                value={pdv.selectedTenantId}
+                onChange={pdv.setSelectedTenantId}
+                className="pdv-header-tenant-select"
+                aria-label="Empresa"
+              />
+            )}
+            <span className="pdv-register-pill">{currentRegisterName || 'Caixa'}</span>
           </div>
-          <div className="pdv-header-meta">
-            <time className="pdv-header-clock" dateTime={now.toISOString()}>
-              <ClockCircleOutlined aria-hidden className="pdv-header-clock-icon" />
-              {now.format('DD/MM/YYYY · HH:mm:ss')}
-            </time>
+          <div className="pdv-header-right">
+            <Button
+              size="small"
+              icon={<LogoutOutlined />}
+              onClick={pdv.endSessionAndClear}
+              loading={pdv.loadingEndSession}
+              className="pdv-btn-end-session"
+            >
+              <span className="pdv-btn-end-session-text">Encerrar sessão</span>
+            </Button>
+            <span className="pdv-header-user" title={user?.fullName || user?.name || 'Atendente'}>
+              {user?.fullName || user?.name || 'Atendente'}
+            </span>
           </div>
-        </header>
+        </div>
+        <div className="pdv-header-meta">
+          <time className="pdv-header-clock" dateTime={now.toISOString()}>
+            <ClockCircleOutlined aria-hidden className="pdv-header-clock-icon" />
+            {now.format('DD/MM/YYYY · HH:mm:ss')}
+          </time>
+        </div>
+      </header>
 
+      <div className="pdv-main">
         <div className="pdv-mobile-hints" aria-label="Atalhos rápidos">
+          <span><kbd>F2</kbd> busca</span>
           <span><kbd>F9</kbd> finalizar</span>
-          <span><kbd>F5</kbd>–<kbd>F8</kbd> pagamento</span>
-          <span><kbd>↑</kbd><kbd>↓</kbd> lista</span>
+          <span><kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> carrinho</span>
         </div>
 
-        <Row gutter={[16, 16]} align="top" className="pdv-main-row">
-          <Col xs={{ span: 24, order: 2 }} lg={{ span: 10, xl: 8, order: 1 }} className="pdv-col-left pdv-col-checkout-flow">
+        <Row
+          gutter={[{ xs: 12, sm: 16, lg: 20 }, { xs: 12, sm: 16, lg: 20 }]}
+          align="top"
+          className="pdv-main-row"
+        >
+          <Col xs={{ span: 24, order: 1 }} lg={{ span: 10, xl: 8, order: 1 }} className="pdv-col-left pdv-col-checkout-flow">
             <div className="pdv-search-wrap">
               <label className="pdv-search-label" htmlFor="pdv-product-search">
                 Adicionar produto
@@ -310,7 +479,7 @@ export default function PdvScreen() {
               <Input
                 id="pdv-product-search"
                 ref={searchInputRef}
-                placeholder="Código de barras, nome… (Enter adiciona o destacado)"
+                placeholder="Código de barras, nome… (F2 · Enter adiciona o destacado)"
                 prefix={<BarcodeOutlined className="pdv-search-prefix-icon" aria-hidden />}
                 suffix={pdv.loadingProducts ? <Spin size="small" /> : null}
                 value={pdv.productSearch}
@@ -373,30 +542,34 @@ export default function PdvScreen() {
 
             <section className="pdv-customer-strip" aria-label="Cliente da venda">
               <div className="pdv-customer-strip-inner">
-                <div className="pdv-customer-strip-avatar" aria-hidden>
-                  <UserOutlined />
+                <div className="pdv-customer-strip-top">
+                  <div className="pdv-customer-strip-avatar" aria-hidden>
+                    <UserOutlined />
+                  </div>
+                  <div className="pdv-customer-strip-info">
+                    <span className="pdv-customer-strip-kicker">Cliente nesta venda</span>
+                    <button
+                      type="button"
+                      className="pdv-customer-strip-name-btn"
+                      onClick={pdv.openCustomerModal}
+                    >
+                      {pdv.customerName?.trim() ? pdv.customerName : 'Consumidor — toque para buscar ou cadastrar'}
+                    </button>
+                  </div>
                 </div>
-                <div className="pdv-customer-strip-info">
-                  <span className="pdv-customer-strip-kicker">Cliente nesta venda</span>
-                  <button
-                    type="button"
-                    className="pdv-customer-strip-name-btn"
-                    onClick={pdv.openCustomerModal}
-                  >
-                    {pdv.customerName?.trim() ? pdv.customerName : 'Consumidor — toque para buscar ou cadastrar'}
-                  </button>
+                <div className="pdv-customer-strip-actions">
+                  <Tooltip title="Atalho F11">
+                    <Button
+                      type="primary"
+                      icon={<UserAddOutlined />}
+                      onClick={pdv.openCustomerModal}
+                      className="pdv-customer-strip-action"
+                    >
+                      <span className="pdv-customer-strip-action-label">Cliente</span>
+                      <kbd className="pdv-kbd-inline">F11</kbd>
+                    </Button>
+                  </Tooltip>
                 </div>
-                <Tooltip title="Atalho F11">
-                  <Button
-                    type="primary"
-                    icon={<UserAddOutlined />}
-                    onClick={pdv.openCustomerModal}
-                    className="pdv-customer-strip-action"
-                  >
-                    <span className="pdv-customer-strip-action-label">Cliente</span>
-                    <kbd className="pdv-kbd-inline">F11</kbd>
-                  </Button>
-                </Tooltip>
               </div>
             </section>
 
@@ -523,6 +696,8 @@ export default function PdvScreen() {
                 )}
                 <Form.Item label="Valor recebido">
                   <InputNumber
+                    id="pdv-amount-received"
+                    ref={amountReceivedRef}
                     min={0}
                     value={pdv.amountReceived}
                     onChange={(v) => pdv.setAmountReceived(v)}
@@ -596,6 +771,8 @@ export default function PdvScreen() {
               bordered={false}
               className="pdv-adjustments-collapse"
               expandIconPosition="end"
+              activeKey={adjustmentsActiveKey}
+              onChange={(keys) => setAdjustmentsActiveKey(Array.isArray(keys) ? keys : keys ? [keys] : [])}
               items={[
                 {
                   key: 'adjustments',
@@ -752,7 +929,7 @@ export default function PdvScreen() {
             </Card>
           </Col>
 
-          <Col xs={{ span: 24, order: 1 }} lg={{ span: 14, xl: 16, order: 2 }} className="pdv-produtos-col pdv-col-right pdv-col-cart-sticky">
+          <Col xs={{ span: 24, order: 2 }} lg={{ span: 14, xl: 16, order: 2 }} className="pdv-produtos-col pdv-col-right pdv-col-cart-sticky">
             <Card
               title={(
                 <span className="pdv-card-head-title">
@@ -783,6 +960,9 @@ export default function PdvScreen() {
                   sticky
                   scroll={{ y: cartTableScrollY, x: 'max-content' }}
                   dataSource={pdv.cart.map((c) => ({ ...c, key: c.productId }))}
+                  onRow={(_, index) => ({
+                    className: index === cartRowIndex ? 'pdv-cart-row--kbd-focus' : undefined,
+                  })}
                   columns={[
                     { title: '#', width: 36, align: 'center', render: (_, __, i) => i + 1 },
                     { title: 'Produto', dataIndex: 'productName', ellipsis: true },
@@ -791,15 +971,24 @@ export default function PdvScreen() {
                       width: 100,
                       align: 'center',
                       render: (_, record) => (
-                        <Space.Compact size="small">
-                          <Button size="small" icon={<MinusOutlined />} onClick={() => pdv.updateCartItem(record.productId, 'quantity', Math.max(0.1, (record.quantity || 1) - 1))} />
+                        <Space.Compact size="small" className="pdv-qty-compact">
+                          <Button size="small" className="pdv-qty-step-btn" icon={<MinusOutlined />} onClick={() => pdv.updateCartItem(record.productId, 'quantity', Math.max(0.1, (record.quantity || 1) - 1))} />
                           <InputNumber min={0.1} step={0.1} value={record.quantity} onChange={(v) => pdv.updateCartItem(record.productId, 'quantity', v ?? 1)} size="small" controls={false} className="pdv-qty-input" />
-                          <Button size="small" icon={<PlusOutlined />} onClick={() => pdv.updateCartItem(record.productId, 'quantity', (record.quantity || 1) + 1)} />
+                          <Button size="small" className="pdv-qty-step-btn" icon={<PlusOutlined />} onClick={() => pdv.updateCartItem(record.productId, 'quantity', (record.quantity || 1) + 1)} />
                         </Space.Compact>
                       ),
                     },
-                    { title: 'Unit.', width: 80, align: 'right', render: (_, r) => formatPrice(r.unitPrice) },
-                    { title: 'Total', width: 90, align: 'right', render: (_, r) => <Text strong>{formatPrice(r.unitPrice * (r.quantity || 1) - (r.discountAmount || 0))}</Text> },
+                    { title: 'Unit.', width: 88, align: 'right', responsive: ['md'], render: (_, r) => <span className="pdv-cart-money">{formatPrice(r.unitPrice)}</span> },
+                    {
+                      title: 'Total',
+                      width: 118,
+                      align: 'right',
+                      render: (_, r) => (
+                        <Text strong className="pdv-cart-money">
+                          {formatPrice(r.unitPrice * (r.quantity || 1) - (r.discountAmount || 0))}
+                        </Text>
+                      ),
+                    },
                     { title: '', width: 36, render: (_, r) => <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => pdv.removeFromCart(r.productId)} /> },
                   ]}
                   pagination={false}
@@ -824,6 +1013,12 @@ export default function PdvScreen() {
               )}
             >
               <div className="pdv-shortcuts-grid">
+                <span className="pdv-shortcut-key">F2</span>
+                <span className="pdv-shortcut-desc">Busca de produto</span>
+                <span className="pdv-shortcut-key">F3</span>
+                <span className="pdv-shortcut-desc">Valor recebido (dinheiro)</span>
+                <span className="pdv-shortcut-key">F4</span>
+                <span className="pdv-shortcut-desc">Desconto / entrega / NF-e</span>
                 <span className="pdv-shortcut-key">F5</span>
                 <span className="pdv-shortcut-desc">PIX</span>
                 <span className="pdv-shortcut-key">F6</span>
@@ -838,6 +1033,14 @@ export default function PdvScreen() {
                 <span className="pdv-shortcut-desc">Cancelar último item</span>
                 <span className="pdv-shortcut-key">F11</span>
                 <span className="pdv-shortcut-desc">Cliente</span>
+                <span className="pdv-shortcut-key">Alt+↑↓</span>
+                <span className="pdv-shortcut-desc">Linha do carrinho</span>
+                <span className="pdv-shortcut-key">Alt+Home/End</span>
+                <span className="pdv-shortcut-desc">Primeira / última linha</span>
+                <span className="pdv-shortcut-key">Alt+= / Alt+-</span>
+                <span className="pdv-shortcut-desc">+1 / −1 na quantidade</span>
+                <span className="pdv-shortcut-key">Alt+Del</span>
+                <span className="pdv-shortcut-desc">Remove linha destacada</span>
               </div>
             </Card>
           </Col>
@@ -870,21 +1073,42 @@ export default function PdvScreen() {
         )}
         open={pdv.customerModalOpen}
         onCancel={pdv.closeCustomerModal}
+        afterOpenChange={(open) => {
+          if (open) setTimeout(() => customerSearchInputRef.current?.focus?.({ preventScroll: true }), 0)
+        }}
         footer={null}
         width={440}
-        className="pdv-modal-customer"
+        wrapClassName="pdv-modal-customer"
         destroyOnClose
       >
         <div style={{ marginBottom: 16 }}>
           <Space.Compact style={{ width: '100%' }}>
-            <Input placeholder="Buscar por nome, CPF ou CNPJ" value={pdv.customerSearch} onChange={(e) => pdv.setCustomerSearch(e.target.value)} onPressEnter={pdv.searchCustomer} allowClear />
+            <Input
+              ref={customerSearchInputRef}
+              placeholder="Buscar (Enter) · ↓ lista"
+              value={pdv.customerSearch}
+              onChange={(e) => pdv.setCustomerSearch(e.target.value)}
+              onPressEnter={pdv.searchCustomer}
+              onKeyDown={handleCustomerSearchKeyDown}
+              allowClear
+            />
             <Button type="primary" icon={<SearchOutlined />} onClick={pdv.searchCustomer} loading={pdv.loadingCustomerSearch}>Buscar</Button>
           </Space.Compact>
         </div>
         {pdv.customerResults.length > 0 ? (
           <div className="pdv-customer-list">
-            {pdv.customerResults.map((c) => (
-              <div key={c.id} className="pdv-customer-item" onClick={() => pdv.selectCustomer(c)} role="button" tabIndex={0}>
+            {pdv.customerResults.map((c, idx) => (
+              <div
+                key={c.id}
+                ref={(el) => {
+                  customerItemRefs.current[idx] = el
+                }}
+                className="pdv-customer-item"
+                onClick={() => pdv.selectCustomer(c)}
+                onKeyDown={(e) => handleCustomerItemKeyDown(e, idx, c)}
+                role="button"
+                tabIndex={0}
+              >
                 <div>{c.name}</div>
                 {(c.document || c.phone) && <Text type="secondary" style={{ fontSize: 12 }}>{[c.document, c.phone].filter(Boolean).join(' · ')}</Text>}
               </div>
@@ -949,7 +1173,9 @@ export default function PdvScreen() {
               {pdv.lastSale.status !== 'OPEN' && pdv.lastSale.canEmitNfe && <Button block icon={<FilePdfOutlined />} onClick={pdv.handleDownloadNfe} loading={pdv.loadingNfe}>NF-e</Button>}
               {pdv.lastSale.status !== 'OPEN' && pdv.lastSale.canEmitSimpleReceipt && <Button block icon={<FilePdfOutlined />} onClick={pdv.handleDownloadSimple} loading={pdv.loadingSimpleReceipt}>Comprovante</Button>}
               {pdv.lastDelivery && process.env.REACT_APP_FE_URL && <Button block icon={<CarOutlined />} onClick={pdv.goToDeliveries}>Ir para Entregas</Button>}
-              <Button type="primary" block size="large" onClick={pdv.closeSuccessModal} style={{ marginTop: 8 }}>Nova venda</Button>
+              <Button type="primary" block size="large" autoFocus onClick={pdv.closeSuccessModal} style={{ marginTop: 8 }}>
+                Nova venda
+              </Button>
             </div>
           </div>
         )}

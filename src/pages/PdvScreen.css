@@ -5,27 +5,33 @@
   --pdv-surface: #ffffff;
   --pdv-text: #0f172a;
   --pdv-muted: #64748b;
+  /* Área segura (notch, home indicator) + base */
+  --pdv-safe-top: env(safe-area-inset-top, 0px);
+  --pdv-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --pdv-safe-left: env(safe-area-inset-left, 0px);
+  --pdv-safe-right: env(safe-area-inset-right, 0px);
 
   min-height: 100vh;
   min-height: 100dvh;
   /* Cor sólida por baixo do degradê: preenche overscroll e bordas */
   background-color: #f2f4f7;
   background-image: linear-gradient(180deg, #eef2f6 0%, #f2f4f7 32%, #f4f5f8 100%);
-  padding: 12px;
-  padding-left: max(12px, env(safe-area-inset-left));
-  padding-right: max(12px, env(safe-area-inset-right));
-  padding-bottom: env(safe-area-inset-bottom);
+  padding: max(12px, var(--pdv-safe-top)) max(12px, var(--pdv-safe-right)) max(12px, var(--pdv-safe-bottom))
+    max(12px, var(--pdv-safe-left));
   overflow-x: clip;
   width: 100%;
   max-width: 100vw;
   box-sizing: border-box;
+  /* Menos atraso em toques duplos em botões/links (mantém zoom por gesto) */
+  touch-action: manipulation;
 }
 
 .pdv-main {
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
-  padding-bottom: 100px; /* espaço para barra fixa no mobile */
+  /* Barra inferior fixa + home indicator */
+  padding-bottom: max(100px, calc(88px + env(safe-area-inset-bottom, 0px)));
   box-sizing: border-box;
   min-width: 0;
 }
@@ -61,7 +67,37 @@
  * `position: sticky` falha quando um ancestral tem overflow-x: hidden (vira scrollport).
  */
 @media (min-width: 992px) {
+  /* Header em largura total; conteúdo do PDV centralizado abaixo */
+  .pdv-page {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    /* Alinha o topo do painel fixo ao fluxo da esquerda (após header + margem) */
+    --pdv-page-pad-top: 24px;
+    --pdv-page-pad-h: 24px;
+    /* Altura real do header (barra + relógio) + respiro; alinha topo do carrinho ao .pdv-main */
+    --pdv-header-stack-h: 128px;
+    --pdv-gap-header-main: 16px;
+    /* Extra abaixo do header — evita “Adicionar produto” colar no header fixo */
+    --pdv-header-body-nudge: 18px;
+  }
+
+  /* Header fixo: sem “subida” do sticky; conteúdo empurra com padding-top no .pdv-main */
+  .pdv-header.pdv-header--full-width {
+    position: fixed;
+    top: max(var(--pdv-page-pad-top), env(safe-area-inset-top, 0px));
+    left: max(var(--pdv-page-pad-h), env(safe-area-inset-left, 0px));
+    right: max(var(--pdv-page-pad-h), env(safe-area-inset-right, 0px));
+    width: auto;
+    margin-bottom: 0;
+    z-index: 60;
+  }
+
   .pdv-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    /* Espaço do header fixo + intervalo até o fluxo (substitui margin do header) */
+    padding-top: calc(var(--pdv-header-stack-h) + var(--pdv-gap-header-main) + var(--pdv-header-body-nudge));
     /* Reserva espaço para o painel fixo à direita (evita texto por baixo do carrinho) */
     --pdv-pad-x: 24px;
     --pdv-inner: calc(100vw - 2 * var(--pdv-pad-x));
@@ -87,7 +123,11 @@
 
   .pdv-col-cart-sticky.ant-col {
     position: fixed !important;
-    top: 108px;
+    top: calc(
+      env(safe-area-inset-top, 0px) + var(--pdv-page-pad-top) + var(--pdv-header-stack-h) + var(--pdv-gap-header-main) +
+        var(--pdv-header-body-nudge)
+    );
+    bottom: max(16px, env(safe-area-inset-bottom, 0px));
     right: calc(var(--pdv-pad-x) + (var(--pdv-inner) - var(--pdv-main-inner-w)) / 2) !important;
     left: auto !important;
     width: var(--pdv-cart-w) !important;
@@ -98,17 +138,30 @@
     padding-left: 0 !important;
     padding-right: 0 !important;
     z-index: 25;
-    max-height: calc(100dvh - 120px);
+    max-height: none;
+    height: auto;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
     -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
 
   .pdv-col-cart-sticky .pdv-cart-card,
   .pdv-col-cart-sticky .pdv-shortcuts-card {
     width: 100%;
+  }
+
+  /* Carrinho não estica com a coluna fixa (evita faixa branca gigante) */
+  .pdv-col-cart-sticky .pdv-cart-card {
+    height: auto;
+    min-height: 0;
+    flex-shrink: 0;
   }
 
   .pdv-search-wrap,
@@ -154,9 +207,23 @@
 
 .pdv-customer-strip-inner {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+/* Avatar + título/texto (ocupa o espaço restante sem esmagar o texto) */
+.pdv-customer-strip-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pdv-customer-strip-actions {
+  flex-shrink: 0;
 }
 
 .pdv-customer-strip-avatar {
@@ -204,6 +271,8 @@
   text-align: left;
   cursor: pointer;
   line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -224,6 +293,37 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+/* Coluna estreita (notebook / zoom): texto em cima, botão largo embaixo — sem sobreposição */
+@media (max-width: 1400px) {
+  .pdv-customer-strip-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .pdv-customer-strip-top {
+    flex: none;
+    width: 100%;
+  }
+
+  .pdv-customer-strip-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Tooltip do Ant envolve o botão — estica o wrapper para o botão ocupar a linha */
+  .pdv-customer-strip-actions > * {
+    width: 100%;
+  }
+
+  .pdv-customer-strip-actions .pdv-customer-strip-action.ant-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .pdv-customer-strip-action-label {
@@ -304,15 +404,19 @@
   min-width: 100% !important;
 }
 
+.pdv-cart-table .pdv-cart-row--kbd-focus > td {
+  background-color: rgba(13, 148, 136, 0.1) !important;
+  box-shadow: inset 3px 0 0 0 var(--pdv-teal);
+}
+
 .pdv-login-page {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
   min-height: 100vh;
   min-height: 100dvh;
-  padding-left: max(16px, env(safe-area-inset-left));
-  padding-right: max(16px, env(safe-area-inset-right));
   background: linear-gradient(165deg, #ecfdf5 0%, #f2f4f7 45%, #f8fafc 100%);
 }
 
@@ -386,6 +490,14 @@
     0 1px 2px rgba(15, 23, 42, 0.04),
     0 8px 24px rgba(15, 23, 42, 0.06);
   overflow: hidden;
+}
+
+/* Largura total da área útil (.pdv-page), acima do checkout e do painel do carrinho */
+.pdv-header--full-width {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  align-self: stretch;
 }
 
 .pdv-header-bar {
@@ -789,18 +901,19 @@
 }
 
 .pdv-cart-card {
-  min-height: 240px;
-  height: 100%;
+  min-height: 0;
+  height: auto;
 }
 
 .pdv-cart-card .ant-card-body {
   display: flex;
   flex-direction: column;
   padding: 12px;
+  flex: 0 1 auto;
 }
 
 .pdv-cart-card .ant-table-wrapper {
-  flex: 1;
+  flex: 0 1 auto;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
@@ -837,6 +950,40 @@
   font-size: 14px;
   text-align: center;
   padding: 0 4px;
+}
+
+/* +/- com a mesma altura do InputNumber no meio */
+.pdv-qty-compact.ant-space-compact {
+  align-items: stretch;
+}
+
+.pdv-qty-compact .pdv-qty-step-btn.ant-btn {
+  height: 36px !important;
+  min-height: 36px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+/* Mantém qtd do carrinho em 36px mesmo com .pdv-page .ant-input-number { 40px } no desktop */
+.pdv-cart-card .pdv-qty-input.ant-input-number {
+  min-height: 36px !important;
+  height: 36px !important;
+}
+
+.pdv-cart-card .pdv-qty-input .ant-input-number-input {
+  min-height: 34px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+}
+
+.pdv-cart-money {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .pdv-total-row {
@@ -1093,10 +1240,6 @@
     padding: 16px;
   }
 
-  .pdv-main {
-    padding-bottom: 24px;
-  }
-
   .pdv-login-card {
     padding: 32px 28px;
   }
@@ -1123,6 +1266,16 @@
   }
 }
 
+/* Tablet / phablet: barra inferior fixa ainda visível (< 992px) */
+@media (min-width: 576px) and (max-width: 991.98px) {
+  .pdv-main {
+    padding-bottom: max(96px, calc(88px + env(safe-area-inset-bottom, 0px)));
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
 /* ========== Desktop: hide bottom bar, show full header ========== */
 @media (min-width: 992px) {
   .pdv-page {
@@ -1137,17 +1290,19 @@
     display: none !important;
   }
 
+  /* Barra do caixa um pouco mais fina (alinhada a --pdv-header-stack-h no bloco do carrinho) */
   .pdv-header {
-    margin-bottom: 24px;
+    border-radius: 14px;
   }
 
   .pdv-header-bar {
     flex-wrap: nowrap;
-    padding: 16px 20px;
+    padding: 10px 16px;
+    gap: 10px;
   }
 
   .pdv-header-meta {
-    padding: 10px 20px 14px;
+    padding: 8px 16px 10px;
   }
 
   .pdv-header-left .ant-typography {
@@ -1158,9 +1313,17 @@
     display: inline !important;
   }
 
+  .pdv-logo-wrap {
+    padding: 6px 12px;
+  }
+
   .pdv-logo {
-    max-height: 80px;
-    max-width: 280px;
+    max-height: 48px;
+    max-width: 200px;
+  }
+
+  .pdv-header-clock {
+    font-size: 14px;
   }
 
   .pdv-page .ant-input,
@@ -1179,9 +1342,6 @@
     line-height: 38px !important;
   }
 
-  .pdv-cart-card {
-    min-height: 320px;
-  }
 }
 
 @media (min-width: 1200px) {
@@ -1195,11 +1355,12 @@
   .pdv-main {
     max-width: 100%;
     padding-left: 8px;
-    padding-right: 8px;
+    /* Nunca sobrescrever a reserva do painel fixo (carrinho + atalhos) */
+    padding-right: calc(var(--pdv-cart-w) + 20px);
   }
 
   .pdv-header-bar {
-    padding: 14px 18px;
+    padding: 10px 16px;
   }
 
   .pdv-search-wrap {
@@ -1315,6 +1476,11 @@
 @media (min-width: 992px) and (max-height: 920px) {
   .pdv-page {
     padding: 12px 20px;
+    --pdv-page-pad-top: 12px;
+    --pdv-page-pad-h: 20px;
+    --pdv-header-stack-h: 96px;
+    --pdv-gap-header-main: 10px;
+    --pdv-header-body-nudge: 25px;
   }
 
   .pdv-main {
@@ -1338,16 +1504,12 @@
   }
 
   .pdv-logo {
-    max-height: 56px;
-    max-width: 200px;
+    max-height: 44px;
+    max-width: 180px;
   }
 
   /* Scroll único na página — sem barra própria na coluna esquerda */
-
-  .pdv-col-cart-sticky.ant-col {
-    top: 100px;
-    max-height: calc(100dvh - 112px);
-  }
+  /* Carrinho: top/bottom vêm do bloco base (sem max-height que cortava o rodapé) */
 
   .pdv-search-wrap {
     margin-bottom: 0;
@@ -1373,7 +1535,7 @@
 
   .pdv-payment-card,
   .pdv-card {
-    margin-top: 8px !important;
+    margin-top: 20px !important;
   }
 
   .pdv-payment-card:first-of-type {
@@ -1419,15 +1581,14 @@
   }
 
   .pdv-cart-card {
-    min-height: 200px;
-    height: 100%;
+    min-height: 0;
+    height: auto;
     display: flex;
     flex-direction: column;
-    min-height: 0;
   }
 
   .pdv-cart-card .ant-card-body {
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -1435,7 +1596,7 @@
   }
 
   .pdv-cart-card .ant-table-wrapper {
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
   }
 
@@ -1459,6 +1620,13 @@
     height: 26px !important;
     line-height: 26px !important;
     font-size: 12px !important;
+  }
+
+  .pdv-qty-compact .pdv-qty-step-btn.ant-btn {
+    height: 28px !important;
+    min-height: 28px !important;
+    width: 28px !important;
+    min-width: 28px !important;
   }
 
   .pdv-cart-footer {
@@ -1490,38 +1658,150 @@
   }
 }
 
-/* ========== Modals responsivos ========== */
-@media (max-width: 575.98px) {
+/* ========== Tablet & mobile: toque, leitura, orientação ========== */
+@media (max-width: 991.98px) {
+  .pdv-search-wrap,
+  .pdv-customer-strip {
+    max-width: 100%;
+  }
+
+  .pdv-col-checkout-flow {
+    gap: 14px;
+  }
+
+  .pdv-product-dropdown {
+    max-height: min(320px, 48vh);
+  }
+
+  .pdv-mobile-hints {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .pdv-page .ant-card {
+    border-radius: 14px;
+  }
+
+  .pdv-payment-card .ant-btn-primary {
+    min-height: 48px;
+  }
+
+  .pdv-cart-card .ant-space-compact:not(.pdv-qty-compact) .ant-btn {
+    min-height: 44px;
+    min-width: 40px;
+  }
+
+  .pdv-cart-card .ant-btn-icon-only {
+    min-width: 44px;
+  }
+
+  .pdv-cart-card .pdv-qty-compact .pdv-qty-step-btn.ant-btn {
+    min-height: 36px !important;
+    height: 36px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+  }
+
+  .pdv-qty-input.ant-input-number {
+    min-height: 36px !important;
+  }
+
+  .pdv-cart-card .ant-table-cell {
+    padding: 10px 8px !important;
+  }
+
+  .pdv-page .ant-input-affix-wrapper-lg {
+    min-height: 48px;
+  }
+
+  .pdv-page .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    min-height: 44px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  /* Evita zoom automático no iOS ao focar campos (mín. ~16px) */
+  .pdv-page .ant-input,
+  .pdv-page .ant-input-number-input,
+  .pdv-page .ant-input-affix-wrapper,
+  .pdv-page textarea.ant-input {
+    font-size: 16px !important;
+  }
+
+  .pdv-notes-card textarea.ant-input {
+    font-size: 16px !important;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 991.98px) and (orientation: landscape) {
+  .pdv-main {
+    padding-bottom: max(80px, calc(72px + env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .pdv-header {
+    margin-bottom: 10px;
+  }
+
+  .pdv-mobile-hints {
+    margin: -4px 0 10px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .pdv-product-dropdown {
+    max-height: min(260px, 40vh);
+  }
+}
+
+/* ========== Modals: sheet no cliente (até tablet) ========== */
+@media (max-width: 991.98px) {
   .pdv-modal-customer.ant-modal-wrap {
     align-items: flex-end;
     padding: 0;
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
   }
 
   .pdv-modal-customer .ant-modal {
-    max-width: 100vw !important;
-    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 auto !important;
     padding: 0;
     top: auto !important;
     bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
 
   .pdv-modal-customer .ant-modal-content {
     border-radius: 16px 16px 0 0;
-    max-height: 90vh;
+    max-height: min(92dvh, 720px);
   }
 
   .pdv-modal-customer .ant-modal-body {
-    max-height: calc(90vh - 55px);
+    max-height: calc(min(92dvh, 720px) - 56px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .pdv-modal-success .ant-modal {
-    max-width: calc(100vw - 32px) !important;
+    max-width: min(440px, calc(100vw - 32px)) !important;
     margin: 16px auto !important;
   }
 
   .pdv-modal-success .ant-modal-content {
     border-radius: 16px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .pdv-header-bar {
+    padding: 12px 14px;
+  }
+
+  .pdv-modal-success .ant-modal {
+    max-width: calc(100vw - 24px) !important;
+    margin: 12px auto !important;
   }
 }
