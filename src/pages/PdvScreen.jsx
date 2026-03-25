@@ -454,7 +454,7 @@ export default function PdvScreen() {
         <div className="pdv-header-meta">
           <time className="pdv-header-clock" dateTime={now.toISOString()}>
             <ClockCircleOutlined aria-hidden className="pdv-header-clock-icon" />
-            {now.format('DD/MM/YYYY · HH:mm:ss')}
+            <span className="pdv-header-clock-text">{now.format('DD/MM/YYYY · HH:mm:ss')}</span>
           </time>
         </div>
       </header>
@@ -520,6 +520,7 @@ export default function PdvScreen() {
                             className={`pdv-dropdown-item${active ? ' pdv-dropdown-item--active' : ''}`}
                             onMouseEnter={() => setProductHighlight(idx)}
                             onClick={() => pickProductAndFocus(p)}
+                              title={`${p.name} — ${formatPrice(price)}`}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault()
@@ -965,7 +966,42 @@ export default function PdvScreen() {
                   })}
                   columns={[
                     { title: '#', width: 36, align: 'center', render: (_, __, i) => i + 1 },
-                    { title: 'Produto', dataIndex: 'productName', ellipsis: true },
+                    {
+                      title: 'Produto',
+                      dataIndex: 'productName',
+                      ellipsis: true,
+                      render: (_, r) => {
+                        const qty = r.quantity || 1
+                        const lineTotal = (Number(r.unitPrice) * qty) - (Number(r.discountAmount) || 0)
+                        const unit = Number(r.unitPrice) || 0
+                        const discount = Number(r.discountAmount) || 0
+                        return (
+                          <Tooltip
+                            overlayClassName="pdv-price-tooltip"
+                            title={
+                              <div className="pdv-price-tt-root" style={{ maxWidth: 260 }}>
+                                <div className="pdv-price-tt-title">{r.productName}</div>
+                                {r.productSku && <div className="pdv-price-tt-muted">SKU: {r.productSku}</div>}
+                                <div className="pdv-price-tt-row">
+                                  Unidade: <span className="pdv-price-tt-strong">{formatPrice(unit)}</span> · Qtd:{' '}
+                                  <span className="pdv-price-tt-strong">{qty}</span>
+                                </div>
+                                {discount > 0 && (
+                                  <div className="pdv-price-tt-row">
+                                    Desconto: <span className="pdv-price-tt-strong">-{formatPrice(discount)}</span>
+                                  </div>
+                                )}
+                                <div className="pdv-price-tt-row pdv-price-tt-row--total">
+                                  Total da linha: <span className="pdv-price-tt-strong">{formatPrice(lineTotal)}</span>
+                                </div>
+                              </div>
+                            }
+                          >
+                            <span className="pdv-cart-product-name">{r.productName}</span>
+                          </Tooltip>
+                        )
+                      },
+                    },
                     {
                       title: 'Qtd',
                       width: 100,

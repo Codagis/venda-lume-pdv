@@ -409,6 +409,60 @@
   box-shadow: inset 3px 0 0 0 var(--pdv-teal);
 }
 
+.pdv-cart-product-name {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tooltip de pré-visualização de preço (contraste alto em fundo escuro) */
+.pdv-price-tooltip.ant-tooltip .ant-tooltip-inner {
+  background: rgba(13, 148, 136, 0.98) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  padding: 10px 12px !important;
+}
+
+.pdv-price-tooltip.ant-tooltip .ant-tooltip-arrow::before {
+  background: rgba(13, 148, 136, 0.98) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.pdv-price-tt-root {
+  font-size: 12px;
+}
+
+.pdv-price-tt-title {
+  font-weight: 800;
+  margin-bottom: 6px;
+  color: #ffffff;
+}
+
+.pdv-price-tt-muted {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.pdv-price-tt-row {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.pdv-price-tt-row--total {
+  margin-top: 2px;
+}
+
+.pdv-price-tt-strong {
+  font-weight: 800;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
 .pdv-login-page {
   display: flex;
   align-items: center;
@@ -564,6 +618,14 @@
   letter-spacing: -0.02em;
   color: var(--pdv-text);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.pdv-header-clock-text {
+  display: inline-block;
+  white-space: nowrap;
+  /* Reservar largura fixa reduz o “pulo” quando as dígitos mudam */
+  min-width: 21ch;
 }
 
 .pdv-header-clock-icon {
