@@ -2,17 +2,31 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Mesmo tom do PDV: evita “faixa branca” ao rolar / overscroll (iOS, Chrome) */
+  background-color: #f2f4f7;
+  min-height: 100%;
+}
+
 html,
 body {
-  overflow-x: hidden;
+  /* `hidden` aqui quebra `position: sticky` no Chrome; `clip` evita barra horizontal sem virar scroll container no eixo Y */
+  overflow-x: clip;
   max-width: 100vw;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  min-height: 100%;
+  min-height: 100dvh;
+  background-color: #f2f4f7;
+  font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100%;
+  min-height: 100dvh;
 }
