@@ -184,7 +184,10 @@ export default function PdvScreen() {
           <Button
             icon={<LogoutOutlined />}
             onClick={logout}
-            style={{ marginTop: 8 }}
+            size="large"
+            block
+            danger
+            style={{ marginTop: 16, maxWidth: 320 }}
           >
             Deslogar
           </Button>
