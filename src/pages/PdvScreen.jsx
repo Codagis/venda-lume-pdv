@@ -23,6 +23,7 @@ import {
   Grid,
   message,
 } from 'antd'
+import { maskCpfCnpjBr } from '../utils/masks'
 import {
   BarcodeOutlined,
   SearchOutlined,
@@ -798,8 +799,8 @@ export default function PdvScreen() {
                       >
                         <Input
                           value={pdv.customerDocument || ''}
-                          onChange={(e) => pdv.setCustomerDocument(e.target.value)}
-                          placeholder="Somente números ou formatado"
+                          onChange={(e) => pdv.setCustomerDocument(maskCpfCnpjBr(e.target.value))}
+                          placeholder="CPF ou CNPJ"
                           maxLength={18}
                           allowClear
                         />
@@ -1159,8 +1160,16 @@ export default function PdvScreen() {
             <Form.Item name="name" label="Nome" rules={[{ required: true }, { max: 255 }]}>
               <Input placeholder="Nome do cliente" />
             </Form.Item>
-            <Form.Item name="document" label="CPF/CNPJ (opcional)">
-              <Input placeholder="Documento" />
+            <Form.Item
+              name="document"
+              label="CPF/CNPJ (opcional)"
+              getValueFromEvent={(e) => maskCpfCnpjBr(e?.target?.value)}
+            >
+              <Input
+                placeholder="CPF ou CNPJ"
+                inputMode="numeric"
+                maxLength={18}
+              />
             </Form.Item>
             <Button type="primary" htmlType="submit" loading={pdv.loadingCustomerCreate}>Cadastrar e selecionar</Button>
           </Form>

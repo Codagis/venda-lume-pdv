@@ -14,6 +14,7 @@ import * as customerService from '../services/customerService'
 import * as deliveryService from '../services/deliveryService'
 import * as registerService from '../services/registerService'
 import dayjs from 'dayjs'
+import { maskCpfCnpjBr, normalizeCpfCnpjDigits } from '../utils/masks'
 
 export function useSalesPDV() {
   const { user } = useAuth()
@@ -325,14 +326,14 @@ export function useSalesPDV() {
   const selectCustomer = useCallback(async (customer) => {
     closeCustomerModal()
     setCustomerName(customer.name)
-    setCustomerDocument(customer.document || '')
+    setCustomerDocument(maskCpfCnpjBr(customer.document || ''))
     let customerToUse = customer
     if (saleType === 'DELIVERY' && customer?.id) {
       try {
         const full = await customerService.getCustomerById(customer.id)
         customerToUse = full
         setSelectedCustomer(full)
-        setCustomerDocument(full.document || '')
+        setCustomerDocument(maskCpfCnpjBr(full.document || ''))
       } catch {
         setSelectedCustomer(customer)
       }
@@ -611,11 +612,14 @@ export function useSalesPDV() {
   const createCustomerAndSelect = useCallback(async (values) => {
     setLoadingCustomerCreate(true)
     try {
-      const payload = { name: values.name?.trim(), document: values.document?.trim() || undefined }
+      const rawDoc = values.document?.trim() || ''
+      const normalizedDoc = normalizeCpfCnpjDigits(rawDoc)
+      const payload = { name: values.name?.trim(), document: normalizedDoc || undefined }
       if (isRoot && effectiveTenantId) payload.tenantId = effectiveTenantId
       const created = await customerService.createCustomer(payload)
       setCustomerName(created.name)
       setSelectedCustomer(created)
+      setCustomerDocument(maskCpfCnpjBr(created.document || normalizedDoc || ''))
       if (saleType === 'DELIVERY') fillDeliveryFromCustomer(created)
       message.success('Cliente cadastrado!')
       closeCustomerModal()
