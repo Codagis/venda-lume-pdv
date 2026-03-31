@@ -502,6 +502,32 @@
   max-width: 380px;
 }
 
+.pdv-login-form {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.pdv-login-form .ant-form-item {
+  text-align: left;
+}
+
+.pdv-login-form .ant-form-item-extra {
+  white-space: normal;
+}
+
+@media (max-width: 420px) {
+  .pdv-login-card {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
+  .pdv-login-form {
+    max-width: none;
+  }
+}
+
 .pdv-login-brand-title {
   margin-bottom: 24px !important;
   color: var(--pdv-teal-dark) !important;

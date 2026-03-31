@@ -10,12 +10,14 @@
   padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
-/* Com `zoom` (< 1), `100vh/100dvh` fica visualmente menor. Compensa para manter centralização. */
-@supports (zoom: 1) {
-  .login-page {
-    min-height: calc(100dvh / var(--vl-ui-scale));
-    height: calc(100dvh / var(--vl-ui-scale));
-    width: calc(100vw / var(--vl-ui-scale));
+/* Compensações do `zoom`: só fora do mobile (no mobile o zoom fica desligado). */
+@media (min-width: 768px) {
+  @supports (zoom: 1) {
+    .login-page {
+      min-height: calc(100dvh / var(--vl-ui-scale));
+      height: calc(100dvh / var(--vl-ui-scale));
+      width: calc(100vw / var(--vl-ui-scale));
+    }
   }
 }
 
@@ -29,7 +31,7 @@
 
 .login-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
 }
 
 .login-card {
@@ -40,6 +42,24 @@
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.04),
     0 12px 40px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 420px) {
+  .login-page {
+    padding: 12px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .login-card {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
+  .login-title {
+    font-size: 22px;
+  }
 }
 
 .login-header {

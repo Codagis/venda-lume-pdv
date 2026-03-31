@@ -353,7 +353,11 @@ export default function PdvScreen() {
               style={{ maxWidth: 360 }}
             />
           ) : (
-            <Form layout="vertical" style={{ maxWidth: 320 }} onFinish={() => pdv.submitPdvLogin()}>
+            <Form
+              layout="vertical"
+              className="pdv-login-form"
+              onFinish={() => pdv.submitPdvLogin()}
+            >
               {pdv.isRoot && (
                 <Form.Item label="Empresa">
                   <Select
