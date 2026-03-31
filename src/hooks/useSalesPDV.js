@@ -445,14 +445,34 @@ export function useSalesPDV() {
     setIncludeCpfOnNote(false)
   }, [])
 
+  const roundMoney = (v) => {
+    const n = Number(v)
+    if (!Number.isFinite(n)) return NaN
+    return Math.round(n * 100) / 100
+  }
+
   const handleFinish = useCallback(async () => {
     if (cart.length === 0) { message.warning('Adicione pelo menos um produto ao carrinho.'); return }
     if (!effectiveTenantId && isRoot) { message.warning('Selecione a empresa da venda.'); return }
     const isOpen = saleStatus === 'OPEN'
     if (!isOpen) {
-      const valorRecebido = amountReceived != null ? amountReceived : totalAPagar
-      if (valorRecebido < totalAPagar) {
-        message.warning('O valor recebido não pode ser menor que o total a pagar. Informe um valor igual ou maior que o total.')
+      const totalDue = roundMoney(totalAPagar)
+      const rawReceived = amountReceived != null && amountReceived !== '' ? amountReceived : totalAPagar
+      const valorRecebido = roundMoney(rawReceived)
+      if (!Number.isFinite(valorRecebido)) {
+        message.warning('Informe um valor recebido válido (número).')
+        return
+      }
+      if (!Number.isFinite(totalDue)) {
+        message.error('Total da venda inválido. Recarregue a página ou ajuste o carrinho.')
+        return
+      }
+      // Evita bloqueio por centavos de ponto flutuante (ex.: 1977 < 1977.0000000001)
+      if (valorRecebido + 0.005 < totalDue) {
+        message.warning({
+          content: `O valor recebido (${valorRecebido.toFixed(2)}) não pode ser menor que o total (${totalDue.toFixed(2)}).`,
+          duration: 6,
+        })
         return
       }
     }
@@ -476,7 +496,8 @@ export function useSalesPDV() {
       }
       if (!isOpen) {
         payload.paymentMethod = paymentMethod
-        payload.amountReceived = amountReceived != null ? amountReceived : totalAPagar
+        const ar = amountReceived != null && amountReceived !== '' ? roundMoney(amountReceived) : roundMoney(totalAPagar)
+        payload.amountReceived = Number.isFinite(ar) ? ar : roundMoney(totalAPagar)
       }
       if (selectedCustomer?.id) payload.customerId = selectedCustomer.id
       if (customerDocument?.trim()) {
@@ -506,6 +527,7 @@ export function useSalesPDV() {
       const sale = await createSale(payload)
       setLastSale(sale)
       setLastDelivery(null)
+      message.success({ content: 'Venda registrada com sucesso!', duration: 3 })
       if (saleType === 'DELIVERY' && sale?.id && createDeliveryWithSale) {
         try {
           const delivery = await deliveryService.createDelivery({

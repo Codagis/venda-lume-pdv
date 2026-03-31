@@ -8,13 +8,22 @@
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
   padding-bottom: max(16px, env(safe-area-inset-bottom));
-  background-color: #F2F4F7;
+}
+
+/* Com `zoom` (< 1), `100vh/100dvh` fica visualmente menor. Compensa para manter centralização. */
+@supports (zoom: 1) {
+  .login-page {
+    min-height: calc(100dvh / var(--vl-ui-scale));
+    height: calc(100dvh / var(--vl-ui-scale));
+    width: calc(100vw / var(--vl-ui-scale));
+  }
 }
 
 .login-backdrop {
   position: fixed;
   inset: 0;
-  background-color: #F2F4F7;
+  background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(13, 148, 136, 0.14), transparent 55%),
+    linear-gradient(180deg, #f2f4f7 0%, #eef2f6 100%);
   z-index: -1;
 }
 
@@ -24,11 +33,13 @@
 }
 
 .login-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E4E7EC;
-  border-radius: 12px;
+  background-color: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
   padding: 28px 20px;
-  box-shadow: 0 2px 12px rgba(52, 73, 94, 0.08);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 40px rgba(15, 23, 42, 0.08);
 }
 
 .login-header {
@@ -73,8 +84,8 @@
 .login-form .ant-input-affix-wrapper:hover,
 .login-form .ant-input-affix-wrapper:focus,
 .login-form .ant-input-affix-wrapper-focused {
-  border-color: #5D6D7E;
-  box-shadow: 0 0 0 2px rgba(52, 73, 94, 0.15);
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.18);
 }
 
 .login-form .ant-input {
@@ -99,16 +110,9 @@
   height: 48px;
   min-height: 48px;
   font-size: 16px;
-  font-weight: 500;
-  border-radius: 8px;
-  background-color: #34495E;
-  border-color: #34495E;
+  font-weight: 600;
+  border-radius: 10px;
   -webkit-tap-highlight-color: transparent;
-}
-
-.login-submit-btn:hover {
-  background-color: #5D6D7E;
-  border-color: #5D6D7E;
 }
 
 .login-footer {
