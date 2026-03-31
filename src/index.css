@@ -13,16 +13,40 @@
 }
 
 html {
-  /* Chrome/Edge (Windows) */
-  zoom: var(--vl-ui-scale);
+  /* Mobile: nunca aplicar zoom (mantém touch/viewport corretos) */
+  zoom: 1;
 }
 
-/* Com `zoom` (< 1), `100vh/100dvh` fica visualmente menor. Compensa altura. */
-@supports (zoom: 1) {
-  html,
-  body,
-  #root {
-    min-height: calc(100dvh / var(--vl-ui-scale));
+/* Desktop/tablet: aplica zoom + compensações de viewport */
+@media (min-width: 768px) {
+  html {
+    /* Chrome/Edge (Windows) */
+    zoom: var(--vl-ui-scale);
+  }
+
+  /* Com `zoom` (< 1), `100vh/100dvh` fica visualmente menor. Compensa altura. */
+  @supports (zoom: 1) {
+    html,
+    body,
+    #root {
+      min-height: calc(100dvh / var(--vl-ui-scale));
+    }
+  }
+
+  /* Fallback para navegadores sem suporte a `zoom` */
+  @supports not (zoom: 1) {
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      transform: scale(var(--vl-ui-scale));
+      transform-origin: top left;
+      width: calc(100% / var(--vl-ui-scale));
+      height: calc(100% / var(--vl-ui-scale));
+      overflow-x: hidden;
+    }
   }
 }
 
@@ -32,22 +56,6 @@ body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Fallback para navegadores sem suporte a `zoom` */
-@supports not (zoom: 1) {
-  html,
-  body {
-    height: 100%;
-  }
-
-  body {
-    transform: scale(var(--vl-ui-scale));
-    transform-origin: top left;
-    width: calc(100% / var(--vl-ui-scale));
-    height: calc(100% / var(--vl-ui-scale));
-    overflow-x: hidden;
-  }
 }
 
 code {
