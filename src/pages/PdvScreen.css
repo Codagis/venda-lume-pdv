@@ -26,6 +26,19 @@
   touch-action: manipulation;
 }
 
+/* Com `zoom` (< 1), `100vw/100dvh` ficam visualmente menores. Compensa no container do PDV. */
+@supports (zoom: 1) {
+  .pdv-page {
+    min-height: calc(100dvh / var(--vl-ui-scale));
+    width: calc(100vw / var(--vl-ui-scale));
+    max-width: none;
+  }
+
+  .pdv-login-page {
+    min-height: calc(100dvh / var(--vl-ui-scale));
+  }
+}
+
 .pdv-main {
   max-width: 1400px;
   width: 100%;
@@ -471,7 +484,6 @@
     max(16px, env(safe-area-inset-left));
   min-height: 100vh;
   min-height: 100dvh;
-  background: linear-gradient(165deg, #ecfdf5 0%, #f2f4f7 45%, #f8fafc 100%);
 }
 
 .pdv-login-card {

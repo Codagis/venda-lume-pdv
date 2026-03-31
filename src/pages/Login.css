@@ -8,7 +8,15 @@
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
   padding-bottom: max(16px, env(safe-area-inset-bottom));
-  background: linear-gradient(165deg, #ecfdf5 0%, #f2f4f7 42%, #f8fafc 100%);
+}
+
+/* Com `zoom` (< 1), `100vh/100dvh` fica visualmente menor. Compensa para manter centralização. */
+@supports (zoom: 1) {
+  .login-page {
+    min-height: calc(100dvh / var(--vl-ui-scale));
+    height: calc(100dvh / var(--vl-ui-scale));
+    width: calc(100vw / var(--vl-ui-scale));
+  }
 }
 
 .login-backdrop {

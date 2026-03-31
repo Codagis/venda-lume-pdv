@@ -1,9 +1,53 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /*
+    Escala global da UI (para “tirar o zoom” e deixar tudo menor).
+    Ajuste aqui: 0.92, 0.90, 0.88...
+  */
+  --vl-ui-scale: 0.8;
+}
+
+html {
+  /* Chrome/Edge (Windows) */
+  zoom: var(--vl-ui-scale);
+}
+
+/* Com `zoom` (< 1), `100vh/100dvh` fica visualmente menor. Compensa altura. */
+@supports (zoom: 1) {
+  html,
+  body,
+  #root {
+    min-height: calc(100dvh / var(--vl-ui-scale));
+  }
+}
+
 body {
   margin: 0;
   font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fallback para navegadores sem suporte a `zoom` */
+@supports not (zoom: 1) {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    transform: scale(var(--vl-ui-scale));
+    transform-origin: top left;
+    width: calc(100% / var(--vl-ui-scale));
+    height: calc(100% / var(--vl-ui-scale));
+    overflow-x: hidden;
+  }
 }
 
 code {
