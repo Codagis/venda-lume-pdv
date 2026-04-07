@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider, Spin } from 'antd'
+import { ConfigProvider, Spin, App as AntdApp } from 'antd'
 import ptBR from 'antd/locale/pt_BR'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import Login from './pages/Login'
-import PdvScreen from './pages/PdvScreen'
+import Login from './pages/Login/Login'
+import PdvScreen from './pages/PdvScreen/PdvScreen'
 import './App.css'
 
 const antTheme = {
@@ -83,11 +83,13 @@ function AppRoutes() {
 export default function App() {
   return (
     <ConfigProvider locale={ptBR} theme={antTheme}>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
+      <AntdApp>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AuthProvider>
+      </AntdApp>
     </ConfigProvider>
   )
 }

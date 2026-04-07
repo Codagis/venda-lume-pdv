@@ -37,9 +37,10 @@ export function AuthProvider({ children }) {
     }
 
     const response = await apiLogin(username.trim(), password)
-    if (response.user) {
-      setUser(response.user)
+    if (!response?.user) {
+      throw new Error('Usuário ou senha inválidos.')
     }
+    setUser(response.user)
     setIsAuthenticated(true)
   }, [])
 

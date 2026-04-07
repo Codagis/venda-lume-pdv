@@ -16,8 +16,13 @@ export async function startSession(registerId, tenantId = null, body = {}) {
   const url = tenantId
     ? `/registers/${registerId}/session/start?tenantId=${encodeURIComponent(tenantId)}`
     : `/registers/${registerId}/session/start`
-  const res = await apiFetch(url, { method: 'POST', body: JSON.stringify(body || {}) })
+  // Esta rota pode retornar 401 para "senha do PDV inválida" em algumas instalações.
+  // Não devemos tentar refresh token / redirecionar para /login nesse caso — queremos mostrar o erro na tela do PDV.
+  const res = await apiFetch(url, { method: 'POST', body: JSON.stringify(body || {}), skipAuthRefresh: true })
   if (!res.ok) {
+    if (res.status === 401 || res.status === 400 || res.status === 403) {
+      throw new Error('Senha do PDV inválida.')
+    }
     const err = await res.json().catch(() => ({}))
     throw new Error(err?.message || err?.error || 'Erro ao iniciar sessão do PDV.')
   }

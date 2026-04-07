@@ -13,9 +13,12 @@ export async function login(username, password) {
   })
 
   if (!res.ok) {
+    if (res.status === 401 || res.status === 400 || res.status === 403) {
+      throw new Error('Usuário ou senha inválidos.')
+    }
     const err = await res.json().catch(() => ({}))
-    const msg = err?.message || err?.error || 'Credenciais inválidas. Tente novamente.'
-    throw new Error(typeof msg === 'string' ? msg : 'Credenciais inválidas. Tente novamente.')
+    const msg = err?.message || err?.error || 'Usuário ou senha inválidos.'
+    throw new Error(typeof msg === 'string' ? msg : 'Usuário ou senha inválidos.')
   }
 
   return res.json()
@@ -87,8 +90,9 @@ export function apiFetch(path, options = {}) {
     delete headers['content-type']
     opts.headers = headers
   }
+  const skipAuthRefresh = options?.skipAuthRefresh === true
   return fetch(`${API_BASE}${path}`, opts).then((res) => {
-    if (res.status === 401) {
+    if (!skipAuthRefresh && res.status === 401) {
       return handleUnauthorized(res, path, opts)
     }
     return res

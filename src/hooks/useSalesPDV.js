@@ -79,6 +79,7 @@ export function useSalesPDV() {
   const [pdvPasswordValue, setPdvPasswordValue] = useState('')
   const [showPdvPasswordInput, setShowPdvPasswordInput] = useState(false)
   const [loginRegisterId, setLoginRegisterId] = useState(null)
+  const [pdvLoginError, setPdvLoginError] = useState(null)
   const [loadingStartSession, setLoadingStartSession] = useState(false)
   const [loadingEndSession, setLoadingEndSession] = useState(false)
 
@@ -145,6 +146,7 @@ export function useSalesPDV() {
     setShowPdvPasswordInput(false)
     setPendingRegisterId(null)
     setPdvPasswordValue('')
+    setPdvLoginError(null)
     if (selectedRegisterId && selectedRegisterId !== registerId) {
       setLoadingEndSession(true)
       try {
@@ -170,6 +172,7 @@ export function useSalesPDV() {
 
   const submitPdvLogin = useCallback(async () => {
     const registerId = loginRegisterId || pendingRegisterId
+    setPdvLoginError(null)
     if (!registerId) {
       message.warning('Selecione um caixa.')
       return
@@ -188,7 +191,9 @@ export function useSalesPDV() {
       setPdvPasswordValue('')
       setShowPdvPasswordInput(false)
     } catch (e) {
-      message.error(e?.message || 'Senha incorreta ou erro ao acessar.')
+      const msg = e?.message || 'Senha do PDV inválida.'
+      setPdvLoginError(msg)
+      message.error(msg)
     } finally {
       setLoadingStartSession(false)
     }
@@ -383,24 +388,40 @@ export function useSalesPDV() {
   const effectiveMaxInstallments = selectedCardMachine?.maxInstallments ?? tenantConfig.maxInstallments ?? 12
   const effectiveMaxInstallmentsNoInterest = selectedCardMachine?.maxInstallmentsNoInterest ?? tenantConfig.maxInstallmentsNoInterest ?? 1
   const effectiveInterestRatePercent = selectedCardMachine?.interestRatePercent != null ? Number(selectedCardMachine.interestRatePercent) : (Number(tenantConfig.interestRatePercent) || 0)
+  const roundMoney = (v) => {
+    const n = Number(v)
+    if (!Number.isFinite(n)) return 0
+    return Math.round((n + Number.EPSILON) * 100) / 100
+  }
   const installmentsCalc = paymentMethod === 'CREDIT_CARD' && installmentsCount > 0 ? (() => {
     const maxNoInterest = effectiveMaxInstallmentsNoInterest
     const interestPercent = effectiveInterestRatePercent
     const n = Math.min(installmentsCount, effectiveMaxInstallments)
+    const hasInterest = n > maxNoInterest && interestPercent > 0
+    const i = hasInterest ? (interestPercent / 100) : 0
+
+    // Cálculo "profissional": quando há juros, usa fórmula de parcelamento (PMT) no prazo total (n).
+    // totalComJuros = (parcela * n), onde parcela = PV * i*(1+i)^n / ((1+i)^n - 1)
     let totalWithInterest = total
-    if (n > maxNoInterest && interestPercent > 0) {
-      const i = interestPercent / 100
-      const periodosComJuros = n - maxNoInterest
-      totalWithInterest = total * Math.pow(1 + i, periodosComJuros)
+    let installmentValue = total / n
+    if (i > 0) {
+      const pow = Math.pow(1 + i, n)
+      installmentValue = total * (i * pow) / (pow - 1)
+      // Regra financeira consistente (PDV/Garçom): parcela em 2 casas, total = parcela * n
+      installmentValue = roundMoney(installmentValue)
+      totalWithInterest = roundMoney(installmentValue * n)
+    } else {
+      installmentValue = roundMoney(installmentValue)
+      totalWithInterest = roundMoney(totalWithInterest)
     }
-    const installmentValue = totalWithInterest / n
+
     let cardFee = 0
     const feeType = selectedCardMachine?.feeType ?? tenantConfig.cardFeeType
     const feeValue = selectedCardMachine?.feeValue ?? tenantConfig.cardFeeValue
     if (feeType === 'PERCENTAGE' && feeValue != null) {
-      cardFee = totalWithInterest * (Number(feeValue) / 100)
+      cardFee = roundMoney(totalWithInterest * (Number(feeValue) / 100))
     } else if (feeType === 'FIXED_AMOUNT' && feeValue != null) {
-      cardFee = Number(feeValue)
+      cardFee = roundMoney(Number(feeValue))
     }
     return { totalWithInterest, installmentValue, cardFee }
   })() : null
@@ -445,12 +466,6 @@ export function useSalesPDV() {
     setDiscountType('amount')
     setIncludeCpfOnNote(false)
   }, [])
-
-  const roundMoney = (v) => {
-    const n = Number(v)
-    if (!Number.isFinite(n)) return NaN
-    return Math.round(n * 100) / 100
-  }
 
   const handleFinish = useCallback(async () => {
     if (cart.length === 0) { message.warning('Adicione pelo menos um produto ao carrinho.'); return }
@@ -643,6 +658,7 @@ export function useSalesPDV() {
     pendingRegisterId,
     pdvPasswordValue,
     setPdvPasswordValue,
+    pdvLoginError,
     showPdvPasswordInput,
     loginRegisterId,
     setLoginRegisterId,

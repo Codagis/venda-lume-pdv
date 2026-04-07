@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Form, Input, Button, message } from 'antd'
+import { Form, Input, Button, App, Alert } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext'
 import './Login.css'
 
 export default function Login() {
+  const { message } = App.useApp()
   const [loading, setLoading] = useState(false)
+  const [loginError, setLoginError] = useState(null)
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -15,16 +17,21 @@ export default function Login() {
   const from = location.state?.from?.pathname || '/'
 
   const onFinish = async (values) => {
+    setLoginError(null)
     setLoading(true)
     try {
       await login({
         username: values.username.trim(),
         password: values.password,
       })
-      message.success('Login realizado com sucesso.')
+      message.success({ content: 'Login realizado com sucesso.', duration: 3 })
       navigate(from, { replace: true })
     } catch (error) {
-      message.error(error?.message || 'Credenciais inválidas. Tente novamente.')
+      const text =
+        (error && typeof error.message === 'string' && error.message) ||
+        'Usuário ou senha inválidos. Verifique e tente novamente.'
+      setLoginError(text)
+      message.error({ content: text, duration: 6 })
     } finally {
       setLoading(false)
     }
@@ -39,6 +46,17 @@ export default function Login() {
             <h1 className="login-title">VendaLume PDV</h1>
             <p className="login-subtitle">Acesse para operar o caixa</p>
           </header>
+
+          {loginError && (
+            <Alert
+              type="error"
+              showIcon
+              message={loginError}
+              closable
+              onClose={() => setLoginError(null)}
+              style={{ marginBottom: 16 }}
+            />
+          )}
 
           <Form
             form={form}
@@ -87,6 +105,12 @@ export default function Login() {
                 loading={loading}
                 block
                 className="login-submit-btn"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  width: '100%',
+                }}
               >
                 Entrar
               </Button>

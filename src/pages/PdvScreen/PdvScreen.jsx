@@ -23,7 +23,7 @@ import {
   Grid,
   message,
 } from 'antd'
-import { maskCpfCnpjBr } from '../utils/masks'
+import { maskCpfCnpjBr } from '../../utils/masks'
 import {
   BarcodeOutlined,
   SearchOutlined,
@@ -43,9 +43,9 @@ import {
   SlidersOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { useAuth } from '../contexts/AuthContext'
-import { useSalesPDV } from '../hooks/useSalesPDV'
-import { SALE_TYPE_OPTIONS, PAYMENT_METHOD_OPTIONS_PDV } from '../services/salesService'
+import { useAuth } from '../../contexts/AuthContext'
+import { useSalesPDV } from '../../hooks/useSalesPDV'
+import { SALE_TYPE_OPTIONS, PAYMENT_METHOD_OPTIONS_PDV } from '../../services/salesService'
 import './PdvScreen.css'
 
 const { Title, Text } = Typography
@@ -101,7 +101,6 @@ export default function PdvScreen() {
     else if (screens.md) cap = Math.min(420, Math.max(200, Math.floor(vh * 0.36)))
     else cap = Math.min(340, Math.max(160, Math.floor(vh * 0.3)))
 
-    /* Poucos itens: altura próxima ao conteúdo; muitos: até o teto da viewport */
     return Math.min(cap, Math.max(96, contentNeeded))
   }, [screens.xxl, screens.xl, screens.lg, screens.md, viewportH, pdv.cart.length])
 
@@ -359,6 +358,14 @@ export default function PdvScreen() {
               className="pdv-login-form"
               onFinish={() => pdv.submitPdvLogin()}
             >
+              {pdv.pdvLoginError ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  message={pdv.pdvLoginError}
+                  style={{ marginBottom: 12 }}
+                />
+              ) : null}
               {pdv.isRoot && (
                 <Form.Item label="Empresa">
                   <Select
