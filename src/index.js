@@ -2,7 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import { registerPwa } from './registerPwa';
 import reportWebVitals from './reportWebVitals';
+
+registerPwa();
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

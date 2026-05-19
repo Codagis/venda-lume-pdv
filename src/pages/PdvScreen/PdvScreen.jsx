@@ -57,6 +57,98 @@ function formatPrice(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
+function cartLineSubtotal(record) {
+  const qty = record.quantity || 1
+  const discount = Number(record.discountAmount) || 0
+  return Number(record.unitPrice) * qty - discount
+}
+
+function PdvCartProductCell({ record, index, formatPrice: fmt }) {
+  const qty = record.quantity || 1
+  const unit = Number(record.unitPrice) || 0
+  const discount = Number(record.discountAmount) || 0
+  const lineTotal = cartLineSubtotal(record)
+
+  const tooltip = (
+    <div className="pdv-price-tt-root" style={{ maxWidth: 260 }}>
+      <div className="pdv-price-tt-title">{record.productName}</div>
+      {record.productSku && <div className="pdv-price-tt-muted">SKU: {record.productSku}</div>}
+      <div className="pdv-price-tt-row">
+        Unidade: <span className="pdv-price-tt-strong">{fmt(unit)}</span> · Qtd:{' '}
+        <span className="pdv-price-tt-strong">{qty}</span>
+      </div>
+      {discount > 0 && (
+        <div className="pdv-price-tt-row">
+          Desconto: <span className="pdv-price-tt-strong">-{fmt(discount)}</span>
+        </div>
+      )}
+      <div className="pdv-price-tt-row pdv-price-tt-row--total">
+        Subtotal: <span className="pdv-price-tt-strong">{fmt(lineTotal)}</span>
+      </div>
+    </div>
+  )
+
+  return (
+    <Tooltip overlayClassName="pdv-price-tooltip" title={tooltip}>
+      <div className="pdv-cart-line-product">
+        <span className="pdv-cart-line-index" aria-hidden>
+          {index + 1}
+        </span>
+        <div className="pdv-cart-line-info">
+          <span className="pdv-cart-product-name" title={record.productName}>
+            {record.productName}
+          </span>
+          <div className="pdv-cart-line-meta">
+            {record.productSku ? (
+              <span className="pdv-cart-product-sku">SKU {record.productSku}</span>
+            ) : null}
+            <span className="pdv-cart-product-unit pdv-cart-product-unit--mobile">{fmt(unit)} / un.</span>
+          </div>
+          {discount > 0 ? (
+            <span className="pdv-cart-discount-badge">Desconto −{fmt(discount)}</span>
+          ) : null}
+        </div>
+      </div>
+    </Tooltip>
+  )
+}
+
+function PdvCartQtyControl({ record, onUpdate }) {
+  const qty = record.quantity || 1
+  const productId = record.productId
+
+  return (
+    <div className="pdv-cart-qty" role="group" aria-label={`Quantidade de ${record.productName}`}>
+      <Button
+        type="default"
+        size="small"
+        className="pdv-qty-step-btn"
+        icon={<MinusOutlined />}
+        aria-label="Diminuir quantidade"
+        onClick={() => onUpdate(productId, 'quantity', Math.max(0.1, qty - 1))}
+      />
+      <InputNumber
+        min={0.1}
+        step={0.1}
+        value={qty}
+        onChange={(v) => onUpdate(productId, 'quantity', v ?? 1)}
+        size="small"
+        controls={false}
+        className="pdv-qty-input"
+        aria-label="Quantidade"
+      />
+      <Button
+        type="default"
+        size="small"
+        className="pdv-qty-step-btn"
+        icon={<PlusOutlined />}
+        aria-label="Aumentar quantidade"
+        onClick={() => onUpdate(productId, 'quantity', qty + 1)}
+      />
+    </div>
+  )
+}
+
 export default function PdvScreen() {
   const { user, logout } = useAuth()
   const pdv = useSalesPDV()
@@ -90,7 +182,7 @@ export default function PdvScreen() {
     const vh = viewportH
     const rowCount = pdv.cart.length
     const theadApprox = 46
-    const rowApprox = 54
+    const rowApprox = 68
     const bodyPadding = 12
     const contentNeeded = rowCount > 0 ? theadApprox + rowCount * rowApprox + bodyPadding : 100
 
@@ -103,6 +195,86 @@ export default function PdvScreen() {
 
     return Math.min(cap, Math.max(96, contentNeeded))
   }, [screens.xxl, screens.xl, screens.lg, screens.md, viewportH, pdv.cart.length])
+
+  const cartStats = useMemo(() => {
+    const items = pdv.cart.length
+    const units = pdv.cart.reduce((sum, line) => sum + (line.quantity || 1), 0)
+    const subtotal = pdv.cart.reduce((sum, line) => sum + cartLineSubtotal(line), 0)
+    return { items, units, subtotal }
+  }, [pdv.cart])
+
+  const cartColumns = useMemo(
+    () => [
+      {
+        title: 'Produto',
+        key: 'product',
+        ellipsis: true,
+        render: (_, record, index) => (
+          <PdvCartProductCell record={record} index={index} formatPrice={formatPrice} />
+        ),
+      },
+      {
+        title: 'Quantidade',
+        key: 'quantity',
+        width: 128,
+        align: 'center',
+        className: 'pdv-cart-col-qty',
+        render: (_, record) => (
+          <PdvCartQtyControl record={record} onUpdate={pdv.updateCartItem} />
+        ),
+      },
+      {
+        title: 'Preço un.',
+        key: 'unitPrice',
+        width: 96,
+        align: 'right',
+        responsive: ['md'],
+        className: 'pdv-cart-col-unit',
+        render: (_, record) => (
+          <span className="pdv-cart-unit-price">{formatPrice(record.unitPrice)}</span>
+        ),
+      },
+      {
+        title: 'Subtotal',
+        key: 'subtotal',
+        width: 112,
+        align: 'right',
+        className: 'pdv-cart-col-total',
+        render: (_, record) => {
+          const total = cartLineSubtotal(record)
+          return (
+            <div className="pdv-cart-line-total">
+              <span className="pdv-cart-line-total-value">{formatPrice(total)}</span>
+              <span className="pdv-cart-line-total-hint">
+                {record.quantity || 1} × {formatPrice(record.unitPrice)}
+              </span>
+            </div>
+          )
+        },
+      },
+      {
+        title: '',
+        key: 'actions',
+        width: 44,
+        align: 'center',
+        className: 'pdv-cart-col-actions',
+        render: (_, record) => (
+          <Tooltip title="Remover do carrinho">
+            <Button
+              type="text"
+              size="small"
+              danger
+              className="pdv-cart-remove-btn"
+              icon={<DeleteOutlined />}
+              aria-label={`Remover ${record.productName}`}
+              onClick={() => pdv.removeFromCart(record.productId)}
+            />
+          </Tooltip>
+        ),
+      },
+    ],
+    [pdv.updateCartItem, pdv.removeFromCart],
+  )
 
   const searchDropdownOpen = Boolean(
     pdv.productSearch?.trim() && (pdv.productResults.length > 0 || pdv.loadingProducts),
@@ -961,92 +1133,59 @@ export default function PdvScreen() {
                   styles={{ image: { height: 56 } }}
                   description={(
                     <div className="pdv-empty-cart">
-                      <div className="pdv-empty-cart-title">Nenhum item ainda</div>
+                      <div className="pdv-empty-cart-icon" aria-hidden>
+                        <ShoppingCartOutlined />
+                      </div>
+                      <div className="pdv-empty-cart-title">Nenhum item no carrinho</div>
                       <p className="pdv-empty-cart-hint">
-                        Busque acima; defina o cliente na faixa logo abaixo quando precisar.
+                        Busque o produto acima e pressione Enter para adicionar. Use Alt+↑↓ para navegar entre os itens.
                       </p>
                     </div>
                   )}
                 />
               ) : (
+                <div className="pdv-cart-table-wrap">
                 <Table
                   sticky
                   scroll={{ y: cartTableScrollY, x: 'max-content' }}
                   dataSource={pdv.cart.map((c) => ({ ...c, key: c.productId }))}
                   onRow={(_, index) => ({
-                    className: index === cartRowIndex ? 'pdv-cart-row--kbd-focus' : undefined,
+                    className: [
+                      'pdv-cart-row',
+                      index === cartRowIndex ? 'pdv-cart-row--kbd-focus' : '',
+                      index % 2 === 1 ? 'pdv-cart-row--alt' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' '),
                   })}
-                  columns={[
-                    { title: '#', width: 36, align: 'center', render: (_, __, i) => i + 1 },
-                    {
-                      title: 'Produto',
-                      dataIndex: 'productName',
-                      ellipsis: true,
-                      render: (_, r) => {
-                        const qty = r.quantity || 1
-                        const lineTotal = (Number(r.unitPrice) * qty) - (Number(r.discountAmount) || 0)
-                        const unit = Number(r.unitPrice) || 0
-                        const discount = Number(r.discountAmount) || 0
-                        return (
-                          <Tooltip
-                            overlayClassName="pdv-price-tooltip"
-                            title={
-                              <div className="pdv-price-tt-root" style={{ maxWidth: 260 }}>
-                                <div className="pdv-price-tt-title">{r.productName}</div>
-                                {r.productSku && <div className="pdv-price-tt-muted">SKU: {r.productSku}</div>}
-                                <div className="pdv-price-tt-row">
-                                  Unidade: <span className="pdv-price-tt-strong">{formatPrice(unit)}</span> · Qtd:{' '}
-                                  <span className="pdv-price-tt-strong">{qty}</span>
-                                </div>
-                                {discount > 0 && (
-                                  <div className="pdv-price-tt-row">
-                                    Desconto: <span className="pdv-price-tt-strong">-{formatPrice(discount)}</span>
-                                  </div>
-                                )}
-                                <div className="pdv-price-tt-row pdv-price-tt-row--total">
-                                  Total da linha: <span className="pdv-price-tt-strong">{formatPrice(lineTotal)}</span>
-                                </div>
-                              </div>
-                            }
-                          >
-                            <span className="pdv-cart-product-name">{r.productName}</span>
-                          </Tooltip>
-                        )
-                      },
-                    },
-                    {
-                      title: 'Qtd',
-                      width: 100,
-                      align: 'center',
-                      render: (_, record) => (
-                        <Space.Compact size="small" className="pdv-qty-compact">
-                          <Button size="small" className="pdv-qty-step-btn" icon={<MinusOutlined />} onClick={() => pdv.updateCartItem(record.productId, 'quantity', Math.max(0.1, (record.quantity || 1) - 1))} />
-                          <InputNumber min={0.1} step={0.1} value={record.quantity} onChange={(v) => pdv.updateCartItem(record.productId, 'quantity', v ?? 1)} size="small" controls={false} className="pdv-qty-input" />
-                          <Button size="small" className="pdv-qty-step-btn" icon={<PlusOutlined />} onClick={() => pdv.updateCartItem(record.productId, 'quantity', (record.quantity || 1) + 1)} />
-                        </Space.Compact>
-                      ),
-                    },
-                    { title: 'Unit.', width: 88, align: 'right', responsive: ['md'], render: (_, r) => <span className="pdv-cart-money">{formatPrice(r.unitPrice)}</span> },
-                    {
-                      title: 'Total',
-                      width: 118,
-                      align: 'right',
-                      render: (_, r) => (
-                        <Text strong className="pdv-cart-money">
-                          {formatPrice(r.unitPrice * (r.quantity || 1) - (r.discountAmount || 0))}
-                        </Text>
-                      ),
-                    },
-                    { title: '', width: 36, render: (_, r) => <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => pdv.removeFromCart(r.productId)} /> },
-                  ]}
+                  columns={cartColumns}
                   pagination={false}
                   size="small"
                   className="pdv-cart-table"
                 />
+                </div>
               )}
               {pdv.cart.length > 0 && (
                 <div className="pdv-cart-footer">
-                  <Button type="link" danger onClick={() => pdv.cart.length > 0 && pdv.removeFromCart(pdv.cart[pdv.cart.length - 1].productId)}>
+                  <div className="pdv-cart-footer-summary">
+                    <span className="pdv-cart-footer-stat">
+                      <strong>{cartStats.items}</strong>{' '}
+                      {cartStats.items === 1 ? 'produto' : 'produtos'}
+                    </span>
+                    <span className="pdv-cart-footer-dot" aria-hidden>
+                      ·
+                    </span>
+                    <span className="pdv-cart-footer-stat">
+                      <strong>{cartStats.units}</strong> un.
+                    </span>
+                    <span className="pdv-cart-footer-dot" aria-hidden>
+                      ·
+                    </span>
+                    <span className="pdv-cart-footer-stat pdv-cart-footer-subtotal">
+                      Subtotal <strong>{formatPrice(cartStats.subtotal)}</strong>
+                    </span>
+                  </div>
+                  <Button type="link" danger className="pdv-cart-footer-undo" onClick={() => pdv.cart.length > 0 && pdv.removeFromCart(pdv.cart[pdv.cart.length - 1].productId)}>
                     Desfazer último item <kbd className="pdv-kbd-inline">F10</kbd>
                   </Button>
                 </div>
