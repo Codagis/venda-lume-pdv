@@ -1134,6 +1134,14 @@
   max-width: 100%;
 }
 
+.pdv-installment-summary {
+  font-size: 12px;
+  color: #667085;
+  margin-top: 14px;
+  margin-bottom: 8px;
+  line-height: 1.45;
+}
+
 .pdv-page .ant-input,
 .pdv-page .ant-input-number,
 .pdv-page .ant-input-number-input,

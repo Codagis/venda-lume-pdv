@@ -869,7 +869,7 @@ export default function PdvScreen() {
                     />
                   </Form.Item>
                 {pdv.installmentsCalc && (
-                  <div style={{ fontSize: 12, color: '#667085', marginTop: -8, marginBottom: 8 }}>
+                  <div className="pdv-installment-summary" aria-live="polite">
                     Parcela: <strong>{formatPrice(pdv.installmentsCalc.installmentValue)}</strong>
                     {' · '}
                     Total: <strong>{formatPrice(pdv.totalAPagar)}</strong>
