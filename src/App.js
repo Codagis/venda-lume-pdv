@@ -1,41 +1,64 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ConfigProvider, Spin, App as AntdApp } from 'antd'
 import ptBR from 'antd/locale/pt_BR'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import PublicRoute from './components/PublicRoute'
 import Login from './pages/Login/Login'
 import PdvScreen from './pages/PdvScreen/PdvScreen'
 import './App.css'
 
+const motionEase = 'cubic-bezier(0.33, 1, 0.68, 1)'
+
 const antTheme = {
   token: {
-    colorPrimary: '#0d9488',
-    colorSuccess: '#16a34a',
+    fontFamily: "'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontWeight: 300,
+    fontWeightStrong: 700,
+    colorPrimary: '#1a4a2f',
+    colorSuccess: '#1a4a2f',
+    colorSuccessBg: '#e6ede8',
+    colorSuccessBorder: '#d1e0d6',
     colorWarning: '#d97706',
     colorError: '#dc2626',
+    colorText: '#0f172a',
+    colorTextSecondary: '#64748b',
+    colorBorder: '#e2e8f0',
+    colorBgContainer: '#ffffff',
     borderRadiusLG: 12,
     borderRadius: 10,
-    fontFamily: "'Urbanist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    motionDurationFast: '0.16s',
+    motionDurationMid: '0.32s',
+    motionDurationSlow: '0.42s',
+    motionEaseInOut: motionEase,
+    motionEaseOut: motionEase,
   },
   components: {
     Button: {
+      primaryColor: '#ffffff',
+      colorPrimary: '#1a4a2f',
+      colorPrimaryHover: '#235a38',
+      colorPrimaryActive: '#153f28',
       controlHeightLG: 48,
-      fontWeight: 600,
+      fontWeight: 700,
     },
     Card: {
       headerFontSize: 15,
     },
     Input: {
-      activeBorderColor: '#0d9488',
-      hoverBorderColor: '#14b8a6',
+      activeBorderColor: '#1a4a2f',
+      hoverBorderColor: '#235a38',
     },
     Select: {
-      optionSelectedBg: 'rgba(13, 148, 136, 0.12)',
+      optionSelectedBg: '#e6ede8',
+      optionSelectedColor: '#0f172a',
+      optionSelectedFontWeight: 700,
     },
   },
 }
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -47,17 +70,17 @@ function ProtectedRoute({ children }) {
           alignItems: 'center',
           gap: 16,
           minHeight: '100vh',
-          background: '#f2f4f7',
+          background: '#f4f1e8',
         }}
       >
         <Spin size="large" />
-        <span style={{ color: '#64748b', fontSize: 15 }}>Carregando…</span>
+        <span style={{ color: '#667085', fontSize: 15 }}>Carregando…</span>
       </div>
     )
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: { pathname: '/' } }} />
+    return <Navigate to="/login" replace state={{ from: location }} />
   }
 
   return children
@@ -66,7 +89,14 @@ function ProtectedRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
       <Route
         path="/"
         element={
@@ -84,11 +114,11 @@ export default function App() {
   return (
     <ConfigProvider locale={ptBR} theme={antTheme}>
       <AntdApp>
-        <AuthProvider>
-          <BrowserRouter>
+        <BrowserRouter>
+          <AuthProvider>
             <AppRoutes />
-          </BrowserRouter>
-        </AuthProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </AntdApp>
     </ConfigProvider>
   )

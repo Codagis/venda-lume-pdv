@@ -1,7 +1,7 @@
 ﻿
 .pdv-page {
-  --pdv-teal: #0d9488;
-  --pdv-teal-dark: #0f766e;
+  --pdv-teal: #1a4a2f;
+  --pdv-teal-dark: #153f28;
   --pdv-surface: #ffffff;
   --pdv-text: #0f172a;
   --pdv-muted: #64748b;
@@ -206,8 +206,8 @@
 .pdv-customer-strip {
   width: 100%;
   max-width: 420px;
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(15, 118, 110, 0.06) 100%);
-  border: 1px solid rgba(13, 148, 136, 0.22);
+  background: linear-gradient(135deg, rgba(26, 74, 47, 0.08) 0%, rgba(21, 63, 40, 0.06) 100%);
+  border: 1px solid rgba(26, 74, 47, 0.22);
   border-radius: 14px;
   padding: 12px 14px;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
@@ -241,7 +241,7 @@
   align-items: center;
   justify-content: center;
   background: #fff;
-  border: 1px solid rgba(13, 148, 136, 0.25);
+  border: 1px solid rgba(26, 74, 47, 0.25);
   border-radius: 12px;
   color: var(--pdv-teal);
   font-size: 20px;
@@ -345,7 +345,7 @@
   line-height: 1.4;
   color: var(--pdv-teal-dark);
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(13, 148, 136, 0.3);
+  border: 1px solid rgba(26, 74, 47, 0.3);
   border-radius: 6px;
   vertical-align: middle;
 }
@@ -411,7 +411,7 @@
 }
 
 .pdv-cart-table .pdv-cart-row--kbd-focus > td {
-  background-color: rgba(13, 148, 136, 0.1) !important;
+  background-color: rgba(26, 74, 47, 0.1) !important;
   box-shadow: inset 3px 0 0 0 var(--pdv-teal);
 }
 
@@ -424,7 +424,7 @@
 }
 
 .pdv-price-tooltip.ant-tooltip .ant-tooltip-inner {
-  background: rgba(13, 148, 136, 0.98) !important;
+  background: rgba(26, 74, 47, 0.98) !important;
   color: #ffffff !important;
   border: 1px solid rgba(255, 255, 255, 0.18) !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
@@ -432,7 +432,7 @@
 }
 
 .pdv-price-tooltip.ant-tooltip .ant-tooltip-arrow::before {
-  background: rgba(13, 148, 136, 0.98) !important;
+  background: rgba(26, 74, 47, 0.98) !important;
   border-color: rgba(255, 255, 255, 0.18) !important;
 }
 
@@ -597,8 +597,8 @@
   justify-content: center;
   align-items: center;
   padding: 10px 16px 14px;
-  border-top: 1px solid rgba(13, 148, 136, 0.12);
-  background: linear-gradient(180deg, rgba(13, 148, 136, 0.06) 0%, rgba(248, 250, 252, 0.95) 100%);
+  border-top: 1px solid rgba(26, 74, 47, 0.12);
+  background: linear-gradient(180deg, rgba(26, 74, 47, 0.06) 0%, rgba(248, 250, 252, 0.95) 100%);
 }
 
 .pdv-brand-title {
@@ -615,8 +615,8 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--pdv-teal-dark);
-  background: rgba(13, 148, 136, 0.1);
-  border: 1px solid rgba(13, 148, 136, 0.22);
+  background: rgba(26, 74, 47, 0.1);
+  border: 1px solid rgba(26, 74, 47, 0.22);
   border-radius: 999px;
   white-space: nowrap;
   overflow: hidden;
@@ -698,8 +698,8 @@
   font-family: ui-monospace, 'Cascadia Code', monospace;
   font-weight: 600;
   color: var(--pdv-teal-dark);
-  background: rgba(13, 148, 136, 0.1);
-  border: 1px solid rgba(13, 148, 136, 0.2);
+  background: rgba(26, 74, 47, 0.1);
+  border: 1px solid rgba(26, 74, 47, 0.2);
   border-radius: 6px;
 }
 
@@ -775,7 +775,7 @@
 .pdv-search-wrap .ant-input-affix-wrapper:hover,
 .pdv-search-wrap .ant-input-affix-wrapper-focused {
   border-color: var(--pdv-teal) !important;
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+  box-shadow: 0 0 0 3px rgba(26, 74, 47, 0.15) !important;
 }
 
 .pdv-search-prefix-icon {
@@ -828,8 +828,8 @@
 }
 
 .pdv-dropdown-item--active {
-  background: rgba(13, 148, 136, 0.1) !important;
-  outline: 2px solid rgba(13, 148, 136, 0.35);
+  background: rgba(26, 74, 47, 0.1) !important;
+  outline: 2px solid rgba(26, 74, 47, 0.35);
   outline-offset: -2px;
 }
 
@@ -1109,8 +1109,8 @@
 
 .pdv-customer-item:hover,
 .pdv-customer-item:active {
-  background: rgba(13, 148, 136, 0.08);
-  border-color: rgba(13, 148, 136, 0.25);
+  background: rgba(26, 74, 47, 0.08);
+  border-color: rgba(26, 74, 47, 0.25);
 }
 
 .pdv-success-modal .ant-modal-content {
@@ -1124,7 +1124,7 @@
 
 .pdv-success-header {
   position: relative;
-  background: linear-gradient(135deg, #14b8a6 0%, #0f766e 55%, #115e59 100%);
+  background: linear-gradient(135deg, #235a38 0%, #1a4a2f 55%, #153f28 100%);
   color: #fff;
   padding: 24px 20px;
   text-align: center;

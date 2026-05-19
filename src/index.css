@@ -5,60 +5,67 @@
 }
 
 :root {
-  /*
-    Escala global da UI (para “tirar o zoom” e deixar tudo menor).
-    Ajuste aqui: 0.92, 0.90, 0.88...
-  */
-  --vl-ui-scale: 0.8;
+  --vl-ui-scale: 1;
+  --vl-brand: #1a4a2f;
+  --vl-brand-hover: #235a38;
+  --vl-brand-dark: #153f28;
+  --vl-brand-light: #e6ede8;
+  --vl-brand-soft: #d1e0d6;
+  --vl-font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
+  --vl-font-weight-regular: 300;
+  --vl-font-weight-bold: 700;
 }
 
 html {
-  /* Mobile: nunca aplicar zoom (mantém touch/viewport corretos) */
-  zoom: 1;
+  zoom: var(--vl-ui-scale);
+  background-color: #f4f1e8;
+  min-height: 100%;
 }
 
-/* Desktop/tablet: aplica zoom + compensações de viewport */
-@media (min-width: 768px) {
-  html {
-    /* Chrome/Edge (Windows) */
-    zoom: var(--vl-ui-scale);
-  }
-
-  /* Com `zoom` (< 1), `100vh/100dvh` fica visualmente menor. Compensa altura. */
-  @supports (zoom: 1) {
-    html,
-    body,
-    #root {
-      min-height: calc(100dvh / var(--vl-ui-scale));
-    }
-  }
-
-  /* Fallback para navegadores sem suporte a `zoom` */
-  @supports not (zoom: 1) {
-    html,
-    body {
-      height: 100%;
-    }
-
-    body {
-      transform: scale(var(--vl-ui-scale));
-      transform-origin: top left;
-      width: calc(100% / var(--vl-ui-scale));
-      height: calc(100% / var(--vl-ui-scale));
-      overflow-x: hidden;
-    }
+@supports (zoom: 1) {
+  html,
+  body,
+  #root,
+  .login-page,
+  .pdv-page {
+    min-height: calc(100dvh / var(--vl-ui-scale));
   }
 }
 
 body {
   margin: 0;
-  font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: var(--vl-font-family);
+  font-weight: var(--vl-font-weight-regular);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f2f4f7;
+}
+
+b,
+strong,
+.ant-typography strong,
+.ant-btn-primary,
+.ant-table-thead > tr > th,
+.ant-form-item-label > label {
+  font-weight: var(--vl-font-weight-bold) !important;
+}
+
+@supports not (zoom: 1) {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    transform: scale(var(--vl-ui-scale));
+    transform-origin: top left;
+    width: calc(100% / var(--vl-ui-scale));
+    height: calc(100% / var(--vl-ui-scale));
+    overflow-x: hidden;
+  }
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }

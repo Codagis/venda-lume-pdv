@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Form, Input, Button, App, Alert } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
+import logoUrl from '../../assets/images/logo.svg'
 import './Login.css'
 
 export default function Login() {
@@ -43,8 +44,10 @@ export default function Login() {
       <div className="login-container">
         <div className="login-card">
           <header className="login-header">
-            <h1 className="login-title">VendaLume PDV</h1>
-            <p className="login-subtitle">Acesse para operar o caixa</p>
+            <div className="login-brand">
+              <img src={logoUrl} alt="VendaLume" className="login-logo" width={280} height={48} />
+            </div>
+            <p className="login-subtitle">PDV · Acesse para operar o caixa</p>
           </header>
 
           {loginError && (
@@ -99,25 +102,13 @@ export default function Login() {
             </Form.Item>
 
             <Form.Item className="login-submit-item">
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={loading}
-                block
-                className="login-submit-btn"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  width: '100%',
-                }}
-              >
+              <Button type="primary" htmlType="submit" loading={loading} block className="login-submit-btn">
                 Entrar
               </Button>
             </Form.Item>
           </Form>
+          <p className="login-footer">© VendaLume PDV · Acesso restrito</p>
         </div>
-        <p className="login-footer">© VendaLume PDV · Acesso restrito</p>
       </div>
     </div>
   )
